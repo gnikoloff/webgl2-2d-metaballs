@@ -47,10 +47,10 @@ const metaballsProgram = makeWebglProram(gl, {
   fragmentShader: metaballsFragmentShader,
 })
 
-const ballsVertexArray = makeQuadVertices(CONFIG.ballRadius)
+const ballsVertexArray = makeQuadVertices(CONFIG.ballRadius, CONFIG.ballRadius)
 const ballsUvsArray = makeQuadUVs()
 const ballsOffsetsArray = new Float32Array(CONFIG.ballsCount * 2)
-
+console.log(ballsVertexArray)
 for (let i = 0; i < CONFIG.ballsCount; i++) {
   ballsOffsetsArray[i * 2 + 0] = Math.random() * innerWidth
   ballsOffsetsArray[i * 2 + 1] = Math.random() * innerHeight
@@ -116,7 +116,7 @@ const fullscreenQuadFragmentShader = makeWebglShader(gl, {
     out vec4 outputColor;
 
     void main () {
-      outputColor = vec4(v_uv, 0.0, 1.0);
+      outputColor = vec4(v_uv, 0.0, 0.5);
     }
   `
 })
