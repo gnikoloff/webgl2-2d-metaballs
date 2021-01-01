@@ -14,9 +14,13 @@ const metaballsVertexShader = makeWebglShader(gl, {
     uniform mat4 u_projectionMatrix;
     
     in vec4 a_position;
+    in vec2 a_uv;
+
+    out vec2 v_uv;
 
     void main () {
       gl_Position = u_projectionMatrix * a_position;
+      v_uv = a_uv;
     }
   `
 })
@@ -25,10 +29,12 @@ const metaballsFragmentShader = makeWebglShader(gl, {
   shaderSource: `#version 300 es
     precision highp float;
 
+    in vec2 v_uv;
+
     out vec4 outputColor;
 
     void main () {
-      outputColor = vec4(1.0, 0.0, 0.0, 1.0);
+      outputColor = vec4(v_uv, 0.0, 1.0);
     }
   `
 })
@@ -45,14 +51,23 @@ const ballsVertexArray = new Float32Array([
    CONFIG.ballRadius / 2, -CONFIG.ballRadius / 2,
   -CONFIG.ballRadius / 2, -CONFIG.ballRadius / 2]
 )
+const ballsUvsArray = new Float32Array([0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1])
 
 const a_positionLocation = gl.getAttribLocation(metaballsProgram, 'a_position')
+const a_uvLocation = gl.getAttribLocation(metaballsProgram, 'a_uv')
 
 const ballsVertexBuffer = gl.createBuffer()
+const ballsUvsBuffer = gl.createBuffer()
+
 gl.bindBuffer(gl.ARRAY_BUFFER, ballsVertexBuffer)
 gl.bufferData(gl.ARRAY_BUFFER, ballsVertexArray, gl.STATIC_DRAW)
 gl.enableVertexAttribArray(a_positionLocation)
 gl.vertexAttribPointer(a_positionLocation, 2, gl.FLOAT, false, 0, 0)
+
+gl.bindBuffer(gl.ARRAY_BUFFER, ballsUvsBuffer)
+gl.bufferData(gl.ARRAY_BUFFER, ballsUvsArray, gl.STATIC_DRAW)
+gl.enableVertexAttribArray(a_uvLocation)
+gl.vertexAttribPointer(a_uvLocation, 2, gl.FLOAT, false, 0, 0)
 
 init()
 function init () {
