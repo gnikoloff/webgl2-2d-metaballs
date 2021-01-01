@@ -36,7 +36,9 @@ const metaballsFragmentShader = makeWebglShader(gl, {
     out vec4 outputColor;
 
     void main () {
-      outputColor = vec4(v_uv, 0.0, 1.0);
+      float dist = distance(v_uv, vec2(0.5));
+      float c = 0.5 - dist;
+      outputColor = vec4(vec3(1.0), c);
     }
   `
 })
@@ -92,6 +94,9 @@ function init () {
   contentWrapper.appendChild(canvas)
   resize()
   window.addEventListener('resize', resize)
+
+  gl.enable(gl.BLEND)
+  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
 
   gl.useProgram(metaballsProgram)
   const u_projectionMatrix = gl.getUniformLocation(metaballsProgram, 'u_projectionMatrix')
