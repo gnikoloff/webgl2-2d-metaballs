@@ -1,136 +1,150 @@
-const contentWrapper = document.querySelector('.content')
-const canvas = document.createElement('canvas')
-const gl = canvas.getContext('webgl2')
-
 const CONFIG = {
   ballsCount: 100,
   ballRadius: 150
 }
 
-let oldTime = 0
+const contentWrapper = document.querySelector('.content')
+const canvas = document.createElement('canvas')
+const gl = canvas.getContext('webgl2')
 
-const metaballsVertexShader = makeWebglShader(gl, {
-  shaderType: gl.VERTEX_SHADER,
-  shaderSource: `#version 300 es
-    uniform mat4 u_projectionMatrix;
-    
-    in vec4 a_position;
-    in vec4 a_offsetPosition;
-    in vec2 a_uv;
-
-    out vec2 v_uv;
-
-    void main () {
-      gl_Position = u_projectionMatrix * (a_offsetPosition + a_position);
-      v_uv = a_uv;
-    }
-  `
-})
-const metaballsFragmentShader = makeWebglShader(gl, {
-  shaderType: gl.FRAGMENT_SHADER,
-  shaderSource: `#version 300 es
-    precision highp float;
-
-    in vec2 v_uv;
-
-    out vec4 outputColor;
-
-    void main () {
-      float dist = distance(v_uv, vec2(0.5));
-      float c = 0.5 - dist;
-      outputColor = vec4(vec3(1.0), c);
-    }
-  `
-})
-const metaballsProgram = makeWebglProram(gl, {
-  vertexShader: metaballsVertexShader,
-  fragmentShader: metaballsFragmentShader,
-})
-
-const ballsVertexArray = makeQuadVertices(CONFIG.ballRadius, CONFIG.ballRadius)
-const ballsUvsArray = makeQuadUVs()
-const ballsOffsetsArray = new Float32Array(CONFIG.ballsCount * 2)
-console.log(ballsVertexArray)
-for (let i = 0; i < CONFIG.ballsCount; i++) {
-  ballsOffsetsArray[i * 2 + 0] = Math.random() * innerWidth
-  ballsOffsetsArray[i * 2 + 1] = Math.random() * innerHeight
-}
-
-const ballsVertexBuffer = gl.createBuffer()
-const ballsUvsBuffer = gl.createBuffer()
+const quadVertexArrayObject = gl.createVertexArray()
+const ballsVertexArrayObject = gl.createVertexArray()
 const ballsOffsetsBuffer = gl.createBuffer()
 
-const ballsVertexArrayObject = gl.createVertexArray()
+let oldTime = 0
 
+let quadWebGLProgram
+let ballsWebGLProgram
+let ballsOffsetsArray
+
+/* ------- Create metaballs WebGL program ------- */
 {
-  const a_positionLocation = gl.getAttribLocation(metaballsProgram, 'a_position')
-  const a_uvLocation = gl.getAttribLocation(metaballsProgram, 'a_uv')
-  const a_offsetPositionLocation = gl.getAttribLocation(metaballsProgram, 'a_offsetPosition')
+  const vertexShader = makeWebglShader(gl, {
+    shaderType: gl.VERTEX_SHADER,
+    shaderSource: `#version 300 es
+      uniform mat4 u_projectionMatrix;
+      
+      in vec4 a_position;
+      in vec4 a_offsetPosition;
+      in vec2 a_uv;
+
+      out vec2 v_uv;
+
+      void main () {
+        vec4 correctOffsetedPosition = a_offsetPosition + a_position;
+        gl_Position = u_projectionMatrix * correctOffsetedPosition;
+        v_uv = a_uv;
+      }
+    `
+  })
+  const fragmentShader = makeWebglShader(gl, {
+    shaderType: gl.FRAGMENT_SHADER,
+    shaderSource: `#version 300 es
+      precision highp float;
+
+      in vec2 v_uv;
+
+      out vec4 outputColor;
+
+      void main () {
+        float dist = distance(v_uv, vec2(0.5));
+        float c = 0.5 - dist;
+        outputColor = vec4(vec3(1.0), c);
+      }
+    `
+  })
+  ballsWebGLProgram = makeWebglProram(gl, {
+    vertexShader,
+    fragmentShader,
+  })
+}
+
+/* ------- Create and assign metaballs WebGL attributes ------- */
+{
+  const vertexArray = makeQuadVertices(CONFIG.ballRadius, CONFIG.ballRadius)
+  const uvsArray = makeQuadUVs()
+
+  ballsOffsetsArray = new Float32Array(CONFIG.ballsCount * 2)
+
+  for (let i = 0; i < CONFIG.ballsCount; i++) {
+    ballsOffsetsArray[i * 2 + 0] = Math.random() * innerWidth
+    ballsOffsetsArray[i * 2 + 1] = Math.random() * innerHeight
+  }
+
+  const vertexBuffer = gl.createBuffer()
+  const uvsBuffer = gl.createBuffer()
+  ballsOffsetsBuffer = gl.createBuffer()
+
+  const a_position = gl.getAttribLocation(metaballsProgram, 'a_position')
+  const a_uv = gl.getAttribLocation(metaballsProgram, 'a_uv')
+  const a_offsetPosition = gl.getAttribLocation(metaballsProgram, 'a_offsetPosition')
 
   gl.bindVertexArray(ballsVertexArrayObject)
 
-  gl.bindBuffer(gl.ARRAY_BUFFER, ballsVertexBuffer)
-  gl.bufferData(gl.ARRAY_BUFFER, ballsVertexArray, gl.STATIC_DRAW)
-  gl.enableVertexAttribArray(a_positionLocation)
-  gl.vertexAttribPointer(a_positionLocation, 2, gl.FLOAT, false, 0, 0)
+  gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer)
+  gl.bufferData(gl.ARRAY_BUFFER, vertexArray, gl.STATIC_DRAW)
+  gl.enableVertexAttribArray(a_position)
+  gl.vertexAttribPointer(a_position, 2, gl.FLOAT, false, 0, 0)
 
-  gl.bindBuffer(gl.ARRAY_BUFFER, ballsUvsBuffer)
-  gl.bufferData(gl.ARRAY_BUFFER, ballsUvsArray, gl.STATIC_DRAW)
-  gl.enableVertexAttribArray(a_uvLocation)
-  gl.vertexAttribPointer(a_uvLocation, 2, gl.FLOAT, false, 0, 0)
+  gl.bindBuffer(gl.ARRAY_BUFFER, uvsBuffer)
+  gl.bufferData(gl.ARRAY_BUFFER, uvsArray, gl.STATIC_DRAW)
+  gl.enableVertexAttribArray(a_uv)
+  gl.vertexAttribPointer(a_uv, 2, gl.FLOAT, false, 0, 0)
 
   gl.bindBuffer(gl.ARRAY_BUFFER, ballsOffsetsBuffer)
   // TODO: should not be STATIC_DRAW
   gl.bufferData(gl.ARRAY_BUFFER, ballsOffsetsArray, gl.STATIC_DRAW)
-  gl.enableVertexAttribArray(a_offsetPositionLocation)
-  gl.vertexAttribPointer(a_offsetPositionLocation, 2, gl.FLOAT, false, 0, 0)
-  gl.vertexAttribDivisor(a_offsetPositionLocation, 2)
+  gl.enableVertexAttribArray(a_offsetPosition)
+  gl.vertexAttribPointer(a_offsetPosition, 2, gl.FLOAT, false, 0, 0)
+  gl.vertexAttribDivisor(a_offsetPosition, 2)
 
   gl.bindVertexArray(null)
+
 }
 
-/* ------- Fullscreen quad ------- */
-const fullscreenQuadVertexShader = makeWebglShader(gl, {
-  shaderType: gl.VERTEX_SHADER,
-  shaderSource: `#version 300 es
-    uniform mat4 u_projectionMatrix;
-
-    in vec4 a_position;
-    in vec2 a_uv;
-
-    out vec2 v_uv;
-
-    void main () {
-      gl_Position = u_projectionMatrix * a_position;
-      v_uv = a_uv;
-    }
-  `
-})
-const fullscreenQuadFragmentShader = makeWebglShader(gl, {
-  shaderType: gl.FRAGMENT_SHADER,
-  shaderSource: `#version 300 es
-    precision highp float;
-
-    in vec2 v_uv;
-
-    out vec4 outputColor;
-
-    void main () {
-      outputColor = vec4(v_uv, 0.0, 0.5);
-    }
-  `
-})
-const fullscreenQuadProgram = makeWebglProram(gl, {
-  vertexShader: fullscreenQuadVertexShader,
-  fragmentShader: fullscreenQuadFragmentShader,
-})
-
-const quadVertexArray = makeQuadVertices(innerWidth, innerHeight)
-const quadUvsArray = makeQuadUVs()
-
-const quadVertexArrayObject = gl.createVertexArray()
-
+/* ------- Create fullscreen quad WebGL program ------- */
 {
+  const vertexShader = makeWebglShader(gl, {
+    shaderType: gl.VERTEX_SHADER,
+    shaderSource: `#version 300 es
+      uniform mat4 u_projectionMatrix;
+
+      in vec4 a_position;
+      in vec2 a_uv;
+
+      out vec2 v_uv;
+
+      void main () {
+        gl_Position = u_projectionMatrix * a_position;
+        v_uv = a_uv;
+      }
+    `
+  })
+  const fragmentShader = makeWebglShader(gl, {
+    shaderType: gl.FRAGMENT_SHADER,
+    shaderSource: `#version 300 es
+      precision highp float;
+
+      in vec2 v_uv;
+
+      out vec4 outputColor;
+
+      void main () {
+        outputColor = vec4(v_uv, 0.0, 0.5);
+      }
+    `
+  })
+  quadWebGLProgram = makeWebglProram(gl, {
+    vertexShader,
+    fragmentShader,
+  })
+}
+
+// /* ------- Create and assign fullscreen quad WebGL attributes ------- */
+{
+  const vertexArray = makeQuadVertices(innerWidth, innerHeight)
+  const uvsArray = makeQuadUVs()
+
   const vertexBuffer = gl.createBuffer()
   const uvsBuffer = gl.createBuffer()
   
@@ -140,12 +154,12 @@ const quadVertexArrayObject = gl.createVertexArray()
   gl.bindVertexArray(quadVertexArrayObject)
 
   gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer)
-  gl.bufferData(gl.ARRAY_BUFFER, quadVertexArray, gl.STATIC_DRAW)
+  gl.bufferData(gl.ARRAY_BUFFER, vertexArray, gl.STATIC_DRAW)
   gl.enableVertexAttribArray(a_position)
   gl.vertexAttribPointer(a_position, 2, gl.FLOAT, false, 0, 0)
 
   gl.bindBuffer(gl.ARRAY_BUFFER, uvsBuffer)
-  gl.bufferData(gl.ARRAY_BUFFER, quadUvsArray, gl.STATIC_DRAW)
+  gl.bufferData(gl.ARRAY_BUFFER, uvsArray, gl.STATIC_DRAW)
   gl.enableVertexAttribArray(a_uv)
   gl.vertexAttribPointer(a_uv, 2, gl.FLOAT, false, 0, 0)
 
@@ -162,7 +176,7 @@ function init () {
   gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
 
 
-  const projectionMatrix = makeProjection(innerWidth / 2, innerHeight / 2)
+  const projectionMatrix = makeProjectionMatrix(innerWidth / 2, innerHeight / 2)
 
   let u_projectionMatrix
 
@@ -252,7 +266,7 @@ function makeWebglProram (gl, { vertexShader, fragmentShader }) {
   gl.deleteProgram(program)
 }
 
-function makeProjection (width, height) {
+function makeProjectionMatrix (width, height) {
   return new Float32Array([
     2 / width, 0, 0, 0,
     0, -2 / height, 0, 0,
