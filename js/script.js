@@ -73,11 +73,10 @@ let ballsOffsetsArray
 
   const vertexBuffer = gl.createBuffer()
   const uvsBuffer = gl.createBuffer()
-  ballsOffsetsBuffer = gl.createBuffer()
 
-  const a_position = gl.getAttribLocation(metaballsProgram, 'a_position')
-  const a_uv = gl.getAttribLocation(metaballsProgram, 'a_uv')
-  const a_offsetPosition = gl.getAttribLocation(metaballsProgram, 'a_offsetPosition')
+  const a_position = gl.getAttribLocation(ballsWebGLProgram, 'a_position')
+  const a_uv = gl.getAttribLocation(ballsWebGLProgram, 'a_uv')
+  const a_offsetPosition = gl.getAttribLocation(ballsWebGLProgram, 'a_offsetPosition')
 
   gl.bindVertexArray(ballsVertexArrayObject)
 
@@ -140,7 +139,7 @@ let ballsOffsetsArray
   })
 }
 
-// /* ------- Create and assign fullscreen quad WebGL attributes ------- */
+/* ------- Create and assign fullscreen quad WebGL attributes ------- */
 {
   const vertexArray = makeQuadVertices(innerWidth, innerHeight)
   const uvsArray = makeQuadUVs()
@@ -148,8 +147,8 @@ let ballsOffsetsArray
   const vertexBuffer = gl.createBuffer()
   const uvsBuffer = gl.createBuffer()
   
-  const a_position = gl.getAttribLocation(fullscreenQuadProgram, 'a_position')
-  const a_uv = gl.getAttribLocation(fullscreenQuadProgram, 'a_uv')
+  const a_position = gl.getAttribLocation(quadWebGLProgram, 'a_position')
+  const a_uv = gl.getAttribLocation(quadWebGLProgram, 'a_uv')
 
   gl.bindVertexArray(quadVertexArrayObject)
 
@@ -166,6 +165,23 @@ let ballsOffsetsArray
   gl.bindVertexArray(null)
 }
 
+/* ------- Create WebGL texture to render to ------- */
+const targetTextureWidth = innerWidth
+const targetTextureHeight = innerHeight
+const targetTexture = gl.createTexture()
+gl.bindTexture(gl.TEXTURE_2D, targetTexture)
+gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, targetTextureWidth, targetTextureHeight, 0, gl.RGBA, gl.UNSIGNED_BYTE, null)
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+gl.bindTexture(gl.TEXTURE_2D, null)
+
+/* ------- Create WebGL framebuffer to render to ------- */
+const framebuffer = gl.createFramebuffer()
+gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer)
+gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, targetTexture, 0)
+gl.bindFramebuffer(gl.FRAMEBUFFER, null)
+
 init()
 function init () {
   contentWrapper.appendChild(canvas)
@@ -180,13 +196,13 @@ function init () {
 
   let u_projectionMatrix
 
-  gl.useProgram(metaballsProgram)
-  u_projectionMatrix = gl.getUniformLocation(metaballsProgram, 'u_projectionMatrix')
+  gl.useProgram(ballsWebGLProgram)
+  u_projectionMatrix = gl.getUniformLocation(ballsWebGLProgram, 'u_projectionMatrix')
   gl.uniformMatrix4fv(u_projectionMatrix, false, projectionMatrix)
   gl.useProgram(null)
 
-  gl.useProgram(fullscreenQuadProgram)
-  u_projectionMatrix = gl.getUniformLocation(fullscreenQuadProgram, 'u_projectionMatrix')
+  gl.useProgram(quadWebGLProgram)
+  u_projectionMatrix = gl.getUniformLocation(quadWebGLProgram, 'u_projectionMatrix')
   gl.uniformMatrix4fv(u_projectionMatrix, false, projectionMatrix)
   gl.useProgram(null)
 
@@ -201,13 +217,17 @@ function renderFrame (ts) {
   gl.clearColor(0.1, 0.1, 0.1, 1.0)
   gl.clear(gl.COLOR_BUFFER_BIT)
 
+  gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer)
+
   gl.bindVertexArray(ballsVertexArrayObject)
-  gl.useProgram(metaballsProgram)
+  gl.useProgram(ballsWebGLProgram)
   gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, CONFIG.ballsCount)
   gl.bindVertexArray(null)
 
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null)
+
   gl.bindVertexArray(quadVertexArrayObject)
-  gl.useProgram(fullscreenQuadProgram)
+  gl.useProgram(quadWebGLProgram)
   gl.drawArrays(gl.TRIANGLES, 0, 6)
   gl.useProgram(null)
   gl.bindVertexArray(null)
