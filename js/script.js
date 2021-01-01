@@ -73,11 +73,10 @@ let ballsOffsetsArray
 
   const vertexBuffer = gl.createBuffer()
   const uvsBuffer = gl.createBuffer()
-  ballsOffsetsBuffer = gl.createBuffer()
 
-  const a_position = gl.getAttribLocation(metaballsProgram, 'a_position')
-  const a_uv = gl.getAttribLocation(metaballsProgram, 'a_uv')
-  const a_offsetPosition = gl.getAttribLocation(metaballsProgram, 'a_offsetPosition')
+  const a_position = gl.getAttribLocation(ballsWebGLProgram, 'a_position')
+  const a_uv = gl.getAttribLocation(ballsWebGLProgram, 'a_uv')
+  const a_offsetPosition = gl.getAttribLocation(ballsWebGLProgram, 'a_offsetPosition')
 
   gl.bindVertexArray(ballsVertexArrayObject)
 
@@ -148,8 +147,8 @@ let ballsOffsetsArray
   const vertexBuffer = gl.createBuffer()
   const uvsBuffer = gl.createBuffer()
   
-  const a_position = gl.getAttribLocation(fullscreenQuadProgram, 'a_position')
-  const a_uv = gl.getAttribLocation(fullscreenQuadProgram, 'a_uv')
+  const a_position = gl.getAttribLocation(quadWebGLProgram, 'a_position')
+  const a_uv = gl.getAttribLocation(quadWebGLProgram, 'a_uv')
 
   gl.bindVertexArray(quadVertexArrayObject)
 
@@ -180,13 +179,13 @@ function init () {
 
   let u_projectionMatrix
 
-  gl.useProgram(metaballsProgram)
-  u_projectionMatrix = gl.getUniformLocation(metaballsProgram, 'u_projectionMatrix')
+  gl.useProgram(ballsWebGLProgram)
+  u_projectionMatrix = gl.getUniformLocation(ballsWebGLProgram, 'u_projectionMatrix')
   gl.uniformMatrix4fv(u_projectionMatrix, false, projectionMatrix)
   gl.useProgram(null)
 
-  gl.useProgram(fullscreenQuadProgram)
-  u_projectionMatrix = gl.getUniformLocation(fullscreenQuadProgram, 'u_projectionMatrix')
+  gl.useProgram(quadWebGLProgram)
+  u_projectionMatrix = gl.getUniformLocation(quadWebGLProgram, 'u_projectionMatrix')
   gl.uniformMatrix4fv(u_projectionMatrix, false, projectionMatrix)
   gl.useProgram(null)
 
@@ -202,12 +201,12 @@ function renderFrame (ts) {
   gl.clear(gl.COLOR_BUFFER_BIT)
 
   gl.bindVertexArray(ballsVertexArrayObject)
-  gl.useProgram(metaballsProgram)
+  gl.useProgram(ballsWebGLProgram)
   gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, CONFIG.ballsCount)
   gl.bindVertexArray(null)
 
   gl.bindVertexArray(quadVertexArrayObject)
-  gl.useProgram(fullscreenQuadProgram)
+  gl.useProgram(quadWebGLProgram)
   gl.drawArrays(gl.TRIANGLES, 0, 6)
   gl.useProgram(null)
   gl.bindVertexArray(null)
