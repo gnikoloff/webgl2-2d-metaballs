@@ -61,6 +61,10 @@ const a_uvLocation = gl.getAttribLocation(metaballsProgram, 'a_uv')
 const ballsVertexBuffer = gl.createBuffer()
 const ballsUvsBuffer = gl.createBuffer()
 
+const ballsVertexArrayObject = gl.createVertexArray()
+
+gl.bindVertexArray(ballsVertexArrayObject)
+
 gl.bindBuffer(gl.ARRAY_BUFFER, ballsVertexBuffer)
 gl.bufferData(gl.ARRAY_BUFFER, ballsVertexArray, gl.STATIC_DRAW)
 gl.enableVertexAttribArray(a_positionLocation)
@@ -70,6 +74,8 @@ gl.bindBuffer(gl.ARRAY_BUFFER, ballsUvsBuffer)
 gl.bufferData(gl.ARRAY_BUFFER, ballsUvsArray, gl.STATIC_DRAW)
 gl.enableVertexAttribArray(a_uvLocation)
 gl.vertexAttribPointer(a_uvLocation, 2, gl.FLOAT, false, 0, 0)
+
+gl.bindVertexArray(null)
 
 init()
 function init () {
@@ -98,8 +104,10 @@ function renderFrame (ts) {
   gl.clearColor(0.1, 0.1, 0.1, 1.0)
   gl.clear(gl.COLOR_BUFFER_BIT)
 
+  gl.bindVertexArray(ballsVertexArrayObject)
   gl.useProgram(metaballsProgram)
   gl.drawArrays(gl.TRIANGLES, 0, 6)
+  gl.bindVertexArray(null)
 
   requestAnimationFrame(renderFrame)
 }
