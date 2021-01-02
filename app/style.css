@@ -1,0 +1,12 @@
+.webgl2-error {
+  box-sizing: border-box;
+  padding: 2rem;
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 9999;
+  background: #111;
+  color: rgba(255, 255, 255, 0.9);
+}
