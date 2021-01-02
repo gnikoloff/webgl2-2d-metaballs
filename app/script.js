@@ -1,8 +1,9 @@
+import './style.css'
+
 const CONFIG = {
   ballsCount: 100,
   ballRadius: 150
 }
-import './style.css'
 
 const contentWrapper = document.querySelector('.content')
 const canvas = document.createElement('canvas')
@@ -15,10 +16,6 @@ if (!gl) {
 const quadVertexArrayObject = gl.createVertexArray()
 const ballsVertexArrayObject = gl.createVertexArray()
 const ballsOffsetsBuffer = gl.createBuffer()
-
-const CONFIG = {
-  ballRadius: 50
-}
 
 let oldTime = 0
 
