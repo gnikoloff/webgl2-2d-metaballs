@@ -12,7 +12,7 @@ const contentWrapper = document.querySelector('.content')
 const canvas = document.createElement('canvas')
 const gl = canvas.getContext('webgl2')
 
-const dpr = Math.max(devicePixelRatio || 1, 3)
+const dpr = devicePixelRatio > 2.5 ? 2.5 : devicePixelRatio
 
 if (!gl) {
   showWebGL2NotSupported()
@@ -95,7 +95,6 @@ let ballsVelocitiesArray
     ballsVelocitiesArray[i * 2 + 0] = (Math.random() * 2 - 1) * CONFIG.startVelocityX.max + CONFIG.startVelocityX.min
     ballsVelocitiesArray[i * 2 + 1] = Math.random() * CONFIG.startVelocityY.max + CONFIG.startVelocityY.min
   }
-
   const vertexBuffer = gl.createBuffer()
   const uvsBuffer = gl.createBuffer()
 
@@ -119,7 +118,7 @@ let ballsVelocitiesArray
   gl.bufferData(gl.ARRAY_BUFFER, ballsOffsetsArray, gl.DYNAMIC_DRAW)
   gl.enableVertexAttribArray(a_offsetPosition)
   gl.vertexAttribPointer(a_offsetPosition, 2, gl.FLOAT, false, 0, 0)
-  gl.vertexAttribDivisor(a_offsetPosition, 2)
+  gl.vertexAttribDivisor(a_offsetPosition, 1)
 
   gl.bindVertexArray(null)
 
@@ -157,14 +156,34 @@ let ballsVelocitiesArray
       void main () {
         vec4 inputColor = texture(u_texture, v_uv);
 
-        float cutoff = 0.52;
-        float threshold = 0.015;
-        cutoff = step(cutoff, inputColor.a);
+        float cutoffThreshold = 0.14;
 
-        vec4 baseColor = vec4(0.0, 1.0, 0.0, 1.0);
-        vec4 metaballsColor = vec4(1.0, 0.0, 0.0, 1.0);
+        float cutoff = step(cutoffThreshold, inputColor.a);
+        float threshold = 0.005;
 
-        outputColor = mix(baseColor, metaballsColor, cutoff);
+        outputColor = mix(
+          vec4(1, 0, 0, 1),
+          vec4(0, 0, 1, 1),
+          cutoff
+        );
+
+        cutoffThreshold += 0.005;
+
+        cutoff = smoothstep(cutoffThreshold - threshold, cutoffThreshold + threshold, inputColor.a);
+        outputColor = mix(
+          outputColor,
+          vec4(1, 0, 0, 1),
+          cutoff
+        );
+
+        cutoffThreshold += 0.05;
+
+        cutoff = smoothstep(cutoffThreshold - threshold, cutoffThreshold + threshold, inputColor.a);
+        outputColor = mix(
+          outputColor,
+          vec4(0, 1, 0, 1),
+          cutoff
+        );
 
         // outputColor = mix(inputColor, mix(baseColor, metaballsColor, cutoff), 0.3);
 
@@ -212,8 +231,8 @@ let ballsVelocitiesArray
 }
 
 /* ------- Create WebGL texture to render to ------- */
-const targetTextureWidth = innerWidth * dpr
-const targetTextureHeight = innerHeight * dpr
+const targetTextureWidth = innerWidth
+const targetTextureHeight = innerHeight
 const targetTexture = gl.createTexture()
 gl.bindTexture(gl.TEXTURE_2D, targetTexture)
 gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, targetTextureWidth, targetTextureHeight, 0, gl.RGBA, gl.UNSIGNED_BYTE, null)
@@ -292,14 +311,14 @@ function renderFrame (ts) {
   gl.bindBuffer(gl.ARRAY_BUFFER, ballsOffsetsBuffer)
   gl.bufferData(gl.ARRAY_BUFFER, ballsOffsetsArray, gl.DYNAMIC_DRAW)
   
-  gl.viewport(0, 0, canvas.width, canvas.height)
+  
 
   if (a) {
     gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer)
   }
 
-  gl.viewport(0, 0, canvas.width, canvas.height)
-  gl.clearColor(0.1, 0.1, 0.1, 1.0)
+  gl.viewport(0, 0, targetTextureWidth, targetTextureHeight)
+  gl.clearColor(0.1, 0.1, 0.1, 0)
   gl.clear(gl.COLOR_BUFFER_BIT)
 
   gl.bindVertexArray(ballsVertexArrayObject)
@@ -308,6 +327,8 @@ function renderFrame (ts) {
   gl.bindVertexArray(null)
 
   gl.bindFramebuffer(gl.FRAMEBUFFER, null)
+
+  gl.viewport(0, 0, canvas.width, canvas.height)
 
   if (a) {
     gl.bindVertexArray(quadVertexArrayObject)
