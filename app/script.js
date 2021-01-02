@@ -12,6 +12,8 @@ const contentWrapper = document.querySelector('.content')
 const canvas = document.createElement('canvas')
 const gl = canvas.getContext('webgl2')
 
+const dpr = Math.max(devicePixelRatio || 1, 3)
+
 if (!gl) {
   showWebGL2NotSupported()
 }
@@ -210,8 +212,8 @@ let ballsVelocitiesArray
 }
 
 /* ------- Create WebGL texture to render to ------- */
-const targetTextureWidth = innerWidth * devicePixelRatio
-const targetTextureHeight = innerHeight * devicePixelRatio
+const targetTextureWidth = innerWidth * dpr
+const targetTextureHeight = innerHeight * dpr
 const targetTexture = gl.createTexture()
 gl.bindTexture(gl.TEXTURE_2D, targetTexture)
 gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, targetTextureWidth, targetTextureHeight, 0, gl.RGBA, gl.UNSIGNED_BYTE, null)
@@ -321,8 +323,8 @@ function renderFrame (ts) {
 }
 
 function resize () {
-  canvas.width = innerWidth * devicePixelRatio
-  canvas.height = innerHeight * devicePixelRatio
+  canvas.width = innerWidth * dpr
+  canvas.height = innerHeight * dpr
   canvas.style.width = `${innerWidth}px`
   canvas.style.height = `${innerHeight}px`
 }

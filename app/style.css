@@ -10,3 +10,7 @@
   background: #111;
   color: rgba(255, 255, 255, 0.9);
 }
+
+canvas {
+  user-select: none;
+}
