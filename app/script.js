@@ -3,9 +3,10 @@ import './style.css'
 const CONFIG = {
   ballsCount: 100,
   ballRadius: 250,
-  gravity: 0.05,
+  gravity: 0.1,
+  lineWidth: innerWidth / 2,
   startVelocityX: { min: 0, max: 0.1 },
-  startVelocityY: { min: 0, max: 0.1 },
+  startVelocityY: { min: 1, max: 3 },
 }
 
 const contentWrapper = document.querySelector('.content')
@@ -18,18 +19,89 @@ if (!gl) {
   showWebGL2NotSupported()
 }
 
+const lineVertexArrayObject = gl.createVertexArray()
 const quadVertexArrayObject = gl.createVertexArray()
 const ballsVertexArrayObject = gl.createVertexArray()
+
 const ballsOffsetsBuffer = gl.createBuffer()
 
 let oldTime = 0
+let lineAngle = 0
 
+// WebGL Programs
+let lineWebGLProgram
 let quadWebGLProgram
-let quadTextureUniformLoc
 let ballsWebGLProgram
+
+let quadTextureUniformLoc
+let lineAngleUniformLoc
+
+let lineVertexArray
 let ballsOffsetsArray
 // Not for rendering, just storing the balls velocities
 let ballsVelocitiesArray
+
+/* ------- Create horizontal line WebGL program ------- */
+{
+  const vertexShader = makeWebglShader(gl, {
+    shaderType: gl.VERTEX_SHADER,
+    shaderSource: `#version 300 es
+      uniform mat4 u_projectionMatrix;
+      uniform vec2 u_resolution;
+      uniform float u_angle;
+
+      in vec4 a_position;
+
+      mat4 rotationZ( in float angle ) {
+        return mat4(
+          cos(angle),	-sin(angle), 0.0, 0.0,
+          sin(angle),	 cos(angle), 0.0,	0.0,
+          0.0, 0.0, 1.0, 0.0,
+          0.0, 0.0, 0.0, 1.0
+        );
+      }
+
+      void main () {
+        gl_Position = u_projectionMatrix * (rotationZ(u_angle) * a_position + vec4(u_resolution.xy / 2.0, 0.0, 1.0));
+      }
+    `,
+  })
+  const fragmentShader = makeWebglShader(gl, {
+    shaderType: gl.FRAGMENT_SHADER,
+    shaderSource: `#version 300 es
+      precision highp float;
+
+      out vec4 outputColor;
+
+      void main () {
+        outputColor = vec4(0, 0, 1, 1);
+      }
+    `,
+  })
+  lineWebGLProgram = makeWebglProram(gl, {
+    vertexShader,
+    fragmentShader,
+  })
+}
+
+/* ------- Create and assign horizontal line WebGL attributes ------- */
+{
+  lineVertexArray = new Float32Array([-CONFIG.lineWidth / 2, 0, CONFIG.lineWidth / 2, 0])
+
+  
+  const vertexBuffer = gl.createBuffer()
+
+  const a_position = gl.getAttribLocation(lineWebGLProgram, 'a_position')
+  
+  gl.bindVertexArray(lineVertexArrayObject)
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer)
+  gl.bufferData(gl.ARRAY_BUFFER, lineVertexArray, gl.STATIC_DRAW)
+  gl.enableVertexAttribArray(a_position)
+  gl.vertexAttribPointer(a_position, 2, gl.FLOAT, false, 0, 0)
+
+  gl.bindVertexArray(null)
+}
 
 /* ------- Create metaballs WebGL program ------- */
 {
@@ -269,9 +341,20 @@ function init () {
   gl.useProgram(quadWebGLProgram)
   quadTextureUniformLoc = gl.getUniformLocation(quadWebGLProgram, 'u_texture')
   gl.uniform1i(quadTextureUniformLoc, 0)
-
   u_projectionMatrix = gl.getUniformLocation(quadWebGLProgram, 'u_projectionMatrix')
   gl.uniformMatrix4fv(u_projectionMatrix, false, projectionMatrix)
+  gl.useProgram(null)
+
+  gl.useProgram(lineWebGLProgram)
+  u_projectionMatrix = gl.getUniformLocation(lineWebGLProgram, 'u_projectionMatrix')
+  gl.uniformMatrix4fv(u_projectionMatrix, false, projectionMatrix)
+
+  const u_resolution = gl.getUniformLocation(lineWebGLProgram, 'u_resolution')
+  gl.uniform2f(u_resolution, innerWidth, innerHeight)
+
+  lineAngleUniformLoc = gl.getUniformLocation(lineWebGLProgram, 'u_angle')
+  gl.uniform1f(lineAngleUniformLoc, lineAngle * Math.PI / 180)
+
   gl.useProgram(null)
 
   requestAnimationFrame(renderFrame)
@@ -308,6 +391,8 @@ function renderFrame (ts) {
     }
   }
 
+  checkLine()
+
   gl.bindBuffer(gl.ARRAY_BUFFER, ballsOffsetsBuffer)
   gl.bufferData(gl.ARRAY_BUFFER, ballsOffsetsArray, gl.DYNAMIC_DRAW)
   
@@ -339,7 +424,95 @@ function renderFrame (ts) {
     gl.bindTexture(gl.TEXTURE_2D, null)
   }
 
+  lineAngle = Math.sin(ts * 0.001) * 30
+
+  gl.bindVertexArray(lineVertexArrayObject)
+  gl.useProgram(lineWebGLProgram)
+  gl.uniform1f(lineAngleUniformLoc, -lineAngle * Math.PI / 180)
+  gl.drawArrays(gl.LINES, 0, 2)
+  gl.useProgram(null)
+  gl.bindVertexArray(null)
+
   requestAnimationFrame(renderFrame)
+}
+
+function getLineBounds () {
+  const x1 = lineVertexArray[0]
+  const y1 = lineVertexArray[1]
+  const x2 = lineVertexArray[2]
+  const y2 = lineVertexArray[3]
+  if (lineAngle === 0) {
+    const minX = Math.min(x1, x2)
+    const minY = Math.min(y1, y2)
+    const maxX = Math.max(x1, x2)
+    const maxY = Math.max(y1, y2)
+    return {
+      x: x1 + minX,
+      y: y1 + minY,
+      width: maxX - minX,
+      height: maxY - minY,
+    }
+  } else {
+    const rotation = lineAngle * Math.PI / 180
+    const sin = Math.sin(rotation)
+    const cos = Math.cos(rotation)
+    const x1r = cos * x1 + sin * y1
+    const x2r = cos * x2 + sin * y2
+    const y1r = cos * y1 + sin * x1
+    const y2r = cos * y2 + sin * x2
+    const x = innerWidth / 2 + x1 + Math.min(x1r, x2r) + CONFIG.lineWidth / 2
+    const y = innerHeight / 2 + y1 + Math.min(y1r, y2r) + CONFIG.lineWidth / 2
+    const width = Math.max(x1r, x2r) - Math.min(x1r, x2r)
+    const height = Math.max(y1r, y2r) - Math.min(y1r, y2r)
+    return {
+      x,
+      y,
+      width,
+      height,
+    }
+  }
+}
+
+function checkLine () {
+  const lineBounds = getLineBounds()
+  const ballRadius = CONFIG.ballRadius / 7
+
+  for (let i = 0; i < CONFIG.ballsCount; i++) {
+    const ballx = ballsOffsetsArray[i * 2 + 0]
+    const bally = ballsOffsetsArray[i * 2 + 1]
+    const ballvx = ballsVelocitiesArray[i * 2 + 0]
+    const ballvy = ballsVelocitiesArray[i * 2 + 1]
+    if (ballx + ballRadius / 2 > lineBounds.x && ballx - ballRadius / 2 < lineBounds.x + lineBounds.width) {
+    
+      const lineRotation = lineAngle * Math.PI / 180
+      const cos = Math.cos(lineRotation)
+      const sin = Math.sin(lineRotation)
+
+      let x = ballx - innerWidth / 2 
+      let y = bally - innerHeight / 2
+      let vx1 = cos * ballvx + sin * ballvy
+      let vy1 = cos * ballvy - sin * ballvx
+
+      let y1 = cos * y - sin * x
+
+      if (y1 > -ballRadius / 2 && y1 < vy1) {
+        // debugger
+        const x2 = cos * x + sin * y
+
+        y1 = -ballRadius / 2
+        vy1 *= -0.45
+
+        x = cos * x2 - sin * y1
+        y = cos * y1 + sin * x2
+
+        ballsVelocitiesArray[i * 2 + 0] = cos * vx1 - sin * vy1
+        ballsVelocitiesArray[i * 2 + 1] = cos * vy1 + sin * vx1
+
+        ballsOffsetsArray[i * 2 + 0] = innerWidth / 2 + x
+        ballsOffsetsArray[i * 2 + 1] = innerHeight / 2 + y
+      }
+    }
+  }
 }
 
 function resize () {
