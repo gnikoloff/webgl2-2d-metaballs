@@ -190,8 +190,8 @@ let ballsOffsetsArray
 }
 
 /* ------- Create WebGL texture to render to ------- */
-const targetTextureWidth = innerWidth
-const targetTextureHeight = innerHeight
+const targetTextureWidth = innerWidth * dpr
+const targetTextureHeight = innerHeight * dpr
 const targetTexture = gl.createTexture()
 gl.bindTexture(gl.TEXTURE_2D, targetTexture)
 gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, targetTextureWidth, targetTextureHeight, 0, gl.RGBA, gl.UNSIGNED_BYTE, null)
@@ -240,11 +240,11 @@ function renderFrame (ts) {
   const dt = ts - oldTime
   oldTime = ts
   
-  gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight)
+  gl.viewport(0, 0, canvas.width, canvas.height)
 
   gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer)
 
-  gl.viewport(0, 0, innerWidth, innerHeight)
+  gl.viewport(0, 0, canvas.width, canvas.height)
   gl.clearColor(0.1, 0.1, 0.1, 1.0)
   gl.clear(gl.COLOR_BUFFER_BIT)
 
