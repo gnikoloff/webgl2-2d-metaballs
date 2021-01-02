@@ -1,6 +1,9 @@
 const CONFIG = {
   ballsCount: 300,
-  ballRadius: 150
+  ballRadius: 150,
+  gravity: 0.05,
+  startVelocityX: { min: 0, max: 2 },
+  startVelocityY: { min: 0, max: 2 },
 }
 
 const contentWrapper = document.querySelector('.content')
@@ -17,6 +20,8 @@ let quadWebGLProgram
 let quadTextureUniformLoc
 let ballsWebGLProgram
 let ballsOffsetsArray
+// Not for rendering, just storing the balls velocities
+let ballsVelocitiesArray
 
 /* ------- Create metaballs WebGL program ------- */
 {
@@ -66,10 +71,14 @@ let ballsOffsetsArray
   const uvsArray = makeQuadUVs()
 
   ballsOffsetsArray = new Float32Array(CONFIG.ballsCount * 2)
+  ballsVelocitiesArray = new Float32Array(CONFIG.ballsCount * 2)
 
   for (let i = 0; i < CONFIG.ballsCount; i++) {
     ballsOffsetsArray[i * 2 + 0] = Math.random() * innerWidth
     ballsOffsetsArray[i * 2 + 1] = Math.random() * innerHeight
+
+    ballsVelocitiesArray[i * 2 + 0] = (Math.random() * 2 - 1) * CONFIG.startVelocityX.max + CONFIG.startVelocityX.min
+    ballsVelocitiesArray[i * 2 + 1] = Math.random() * CONFIG.startVelocityY.max + CONFIG.startVelocityY.min
   }
 
   const vertexBuffer = gl.createBuffer()
@@ -92,8 +101,7 @@ let ballsOffsetsArray
   gl.vertexAttribPointer(a_uv, 2, gl.FLOAT, false, 0, 0)
 
   gl.bindBuffer(gl.ARRAY_BUFFER, ballsOffsetsBuffer)
-  // TODO: should not be STATIC_DRAW
-  gl.bufferData(gl.ARRAY_BUFFER, ballsOffsetsArray, gl.STATIC_DRAW)
+  gl.bufferData(gl.ARRAY_BUFFER, ballsOffsetsArray, gl.DYNAMIC_DRAW)
   gl.enableVertexAttribArray(a_offsetPosition)
   gl.vertexAttribPointer(a_offsetPosition, 2, gl.FLOAT, false, 0, 0)
   gl.vertexAttribDivisor(a_offsetPosition, 2)
@@ -138,8 +146,8 @@ let ballsOffsetsArray
         float threshold = 0.015;
         cutoff = step(cutoff, inputColor.a);
 
-        vec4 baseColor = vec4(1.0, 0.0, 0.0, 1.0);
-        vec4 metaballsColor = vec4(0.0, 1.0, 0.0, 1.0);
+        vec4 baseColor = vec4(0.0, 1.0, 0.0, 1.0);
+        vec4 metaballsColor = vec4(1.0, 0.0, 0.0, 1.0);
 
         outputColor = mix(baseColor, metaballsColor, cutoff);
 
@@ -231,6 +239,30 @@ function init () {
 function renderFrame (ts) {
   const dt = ts - oldTime
   oldTime = ts
+
+  for (let i = 0; i < CONFIG.ballsCount; i++) {
+    ballsVelocitiesArray[i * 2 + 1] += CONFIG.gravity
+    ballsOffsetsArray[i * 2 + 0] += ballsVelocitiesArray[i * 2 + 0]
+    ballsOffsetsArray[i * 2 + 1] += ballsVelocitiesArray[i * 2 + 1]
+
+
+    if (ballsOffsetsArray[i * 2 + 0] < innerWidth / 2 + CONFIG.ballRadius / 2) {
+      ballsOffsetsArray[i * 2 + 0] = innerWidth / 2 + CONFIG.ballRadius / 2
+      ballsVelocitiesArray[i * 2 + 0] *= -1
+    }
+    if (ballsOffsetsArray[i * 2 + 0] > innerWidth - CONFIG.ballRadius / 2) {
+      ballsOffsetsArray[i * 2 + 0] = innerWidth - CONFIG.ballRadius / 2
+      ballsVelocitiesArray[i * 2 + 0] *= -1
+    }
+
+    if (ballsOffsetsArray[i * 2 + 1] - CONFIG.ballRadius > innerHeight) {
+      ballsOffsetsArray[i * 2 + 1] = 0
+      ballsVelocitiesArray[i * 2 + 1] = Math.random() * CONFIG.startVelocityY.max + CONFIG.startVelocityY.min
+    }
+  }
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, ballsOffsetsBuffer)
+  gl.bufferData(gl.ARRAY_BUFFER, ballsOffsetsArray, gl.DYNAMIC_DRAW)
   
   gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight)
 
