@@ -70,7 +70,14 @@ let ballsOffsetsArray
 
 /* ------- Create and assign metaballs WebGL attributes ------- */
 {
-  const vertexArray = makeQuadVertices(CONFIG.ballRadius, CONFIG.ballRadius)
+  const vertexArray = new Float32Array([
+    -CONFIG.ballRadius / 2,  CONFIG.ballRadius / 2,
+     CONFIG.ballRadius / 2,  CONFIG.ballRadius / 2,
+     CONFIG.ballRadius / 2, -CONFIG.ballRadius / 2,
+    -CONFIG.ballRadius / 2,  CONFIG.ballRadius / 2,
+     CONFIG.ballRadius / 2, -CONFIG.ballRadius / 2,
+    -CONFIG.ballRadius / 2, -CONFIG.ballRadius / 2
+  ])
   const uvsArray = makeQuadUVs()
 
   ballsOffsetsArray = new Float32Array(CONFIG.ballsCount * 2)
@@ -165,7 +172,14 @@ let ballsOffsetsArray
 
 /* ------- Create and assign fullscreen quad WebGL attributes ------- */
 {
-  const vertexArray = makeQuadVertices(innerWidth, innerHeight)
+  const vertexArray = new Float32Array([
+    0, innerHeight / 2,
+    innerWidth / 2, innerHeight / 2,
+    innerWidth / 2, 0,
+    0,innerHeight / 2,
+    innerWidth / 2, 0,
+    0, 0
+  ])
   const uvsArray = makeQuadUVs()
 
   const vertexBuffer = gl.createBuffer()
