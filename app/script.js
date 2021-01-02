@@ -4,8 +4,8 @@ const CONFIG = {
   ballsCount: 300,
   ballRadius: 150,
   gravity: 0.05,
-  startVelocityX: { min: 0, max: 2 },
-  startVelocityY: { min: 0, max: 2 },
+  startVelocityX: { min: 0, max: 0.1 },
+  startVelocityY: { min: 0, max: 0.1 },
 }
 
 const contentWrapper = document.querySelector('.content')
@@ -73,7 +73,14 @@ let ballsVelocitiesArray
 
 /* ------- Create and assign metaballs WebGL attributes ------- */
 {
-  const vertexArray = makeQuadVertices(CONFIG.ballRadius, CONFIG.ballRadius)
+  const vertexArray = new Float32Array([
+    -CONFIG.ballRadius / 2,  CONFIG.ballRadius / 2,
+     CONFIG.ballRadius / 2,  CONFIG.ballRadius / 2,
+     CONFIG.ballRadius / 2, -CONFIG.ballRadius / 2,
+    -CONFIG.ballRadius / 2,  CONFIG.ballRadius / 2,
+     CONFIG.ballRadius / 2, -CONFIG.ballRadius / 2,
+    -CONFIG.ballRadius / 2, -CONFIG.ballRadius / 2
+  ])
   const uvsArray = makeQuadUVs()
 
   ballsOffsetsArray = new Float32Array(CONFIG.ballsCount * 2)
@@ -171,7 +178,14 @@ let ballsVelocitiesArray
 
 /* ------- Create and assign fullscreen quad WebGL attributes ------- */
 {
-  const vertexArray = makeQuadVertices(innerWidth, innerHeight)
+  const vertexArray = new Float32Array([
+    0, innerHeight / 2,
+    innerWidth / 2, innerHeight / 2,
+    innerWidth / 2, 0,
+    0,innerHeight / 2,
+    innerWidth / 2, 0,
+    0, 0
+  ])
   const uvsArray = makeQuadUVs()
 
   const vertexBuffer = gl.createBuffer()
@@ -196,8 +210,8 @@ let ballsVelocitiesArray
 }
 
 /* ------- Create WebGL texture to render to ------- */
-const targetTextureWidth = innerWidth
-const targetTextureHeight = innerHeight
+const targetTextureWidth = innerWidth * devicePixelRatio
+const targetTextureHeight = innerHeight * devicePixelRatio
 const targetTexture = gl.createTexture()
 gl.bindTexture(gl.TEXTURE_2D, targetTexture)
 gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, targetTextureWidth, targetTextureHeight, 0, gl.RGBA, gl.UNSIGNED_BYTE, null)
@@ -242,39 +256,46 @@ function init () {
   requestAnimationFrame(renderFrame)
 }
 
+let a = true
+document.addEventListener('click', () => {
+  a = !a
+})
+
 function renderFrame (ts) {
   const dt = ts - oldTime
   oldTime = ts
 
-  for (let i = 0; i < CONFIG.ballsCount; i++) {
-    ballsVelocitiesArray[i * 2 + 1] += CONFIG.gravity
-    ballsOffsetsArray[i * 2 + 0] += ballsVelocitiesArray[i * 2 + 0]
-    ballsOffsetsArray[i * 2 + 1] += ballsVelocitiesArray[i * 2 + 1]
+  // for (let i = 0; i < CONFIG.ballsCount; i++) {
+  //   ballsVelocitiesArray[i * 2 + 1] += CONFIG.gravity
+  //   ballsOffsetsArray[i * 2 + 0] += ballsVelocitiesArray[i * 2 + 0]
+  //   ballsOffsetsArray[i * 2 + 1] += ballsVelocitiesArray[i * 2 + 1]
 
 
-    if (ballsOffsetsArray[i * 2 + 0] < innerWidth / 2 + CONFIG.ballRadius / 2) {
-      ballsOffsetsArray[i * 2 + 0] = innerWidth / 2 + CONFIG.ballRadius / 2
-      ballsVelocitiesArray[i * 2 + 0] *= -1
-    }
-    if (ballsOffsetsArray[i * 2 + 0] > innerWidth - CONFIG.ballRadius / 2) {
-      ballsOffsetsArray[i * 2 + 0] = innerWidth - CONFIG.ballRadius / 2
-      ballsVelocitiesArray[i * 2 + 0] *= -1
-    }
+  //   if (ballsOffsetsArray[i * 2 + 0] < CONFIG.ballRadius / 2) {
+  //     ballsOffsetsArray[i * 2 + 0] = CONFIG.ballRadius / 2
+  //     ballsVelocitiesArray[i * 2 + 0] *= -1
+  //   }
+  //   if (ballsOffsetsArray[i * 2 + 0] > innerWidth - CONFIG.ballRadius / 2) {
+  //     ballsOffsetsArray[i * 2 + 0] = innerWidth - CONFIG.ballRadius / 2
+  //     ballsVelocitiesArray[i * 2 + 0] *= -1
+  //   }
 
-    if (ballsOffsetsArray[i * 2 + 1] - CONFIG.ballRadius > innerHeight) {
-      ballsOffsetsArray[i * 2 + 1] = 0
-      ballsVelocitiesArray[i * 2 + 1] = Math.random() * CONFIG.startVelocityY.max + CONFIG.startVelocityY.min
-    }
-  }
+  //   if (ballsOffsetsArray[i * 2 + 1] - CONFIG.ballRadius > innerHeight) {
+  //     ballsOffsetsArray[i * 2 + 1] = -CONFIG.ballRadius
+  //     ballsVelocitiesArray[i * 2 + 1] = 5 + Math.random() * 3
+  //   }
+  // }
 
   gl.bindBuffer(gl.ARRAY_BUFFER, ballsOffsetsBuffer)
   gl.bufferData(gl.ARRAY_BUFFER, ballsOffsetsArray, gl.DYNAMIC_DRAW)
   
-  gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight)
+  gl.viewport(0, 0, canvas.width, canvas.height)
 
-  gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer)
+  if (a) {
+    gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer)
+  }
 
-  gl.viewport(0, 0, innerWidth, innerHeight)
+  gl.viewport(0, 0, canvas.width, canvas.height)
   gl.clearColor(0.1, 0.1, 0.1, 1.0)
   gl.clear(gl.COLOR_BUFFER_BIT)
 
@@ -285,13 +306,16 @@ function renderFrame (ts) {
 
   gl.bindFramebuffer(gl.FRAMEBUFFER, null)
 
-  gl.bindVertexArray(quadVertexArrayObject)
-  gl.useProgram(quadWebGLProgram)
-  gl.bindTexture(gl.TEXTURE_2D, targetTexture)
-  gl.drawArrays(gl.TRIANGLES, 0, 6)
-  gl.useProgram(null)
-  gl.bindVertexArray(null)
-  gl.bindTexture(gl.TEXTURE_2D, null)
+  if (a) {
+    gl.bindVertexArray(quadVertexArrayObject)
+    gl.useProgram(quadWebGLProgram)
+    gl.bindTexture(gl.TEXTURE_2D, targetTexture)
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true)
+    gl.drawArrays(gl.TRIANGLES, 0, 6)
+    gl.useProgram(null)
+    gl.bindVertexArray(null)
+    gl.bindTexture(gl.TEXTURE_2D, null)
+  }
 
   requestAnimationFrame(renderFrame)
 }
@@ -299,8 +323,8 @@ function renderFrame (ts) {
 function resize () {
   canvas.width = innerWidth * devicePixelRatio
   canvas.height = innerHeight * devicePixelRatio
-  canvas.style.width = `${innerWidth}`
-  canvas.style.height = `${innerHeight}`
+  canvas.style.width = `${innerWidth}px`
+  canvas.style.height = `${innerHeight}px`
 }
 
 /* ------- WebGL helpers ------- */
