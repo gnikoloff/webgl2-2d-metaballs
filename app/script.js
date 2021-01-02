@@ -1,8 +1,8 @@
 import './style.css'
 
 const CONFIG = {
-  ballsCount: 300,
-  ballRadius: 150,
+  ballsCount: 100,
+  ballRadius: 250,
   gravity: 0.05,
   startVelocityX: { min: 0, max: 0.1 },
   startVelocityY: { min: 0, max: 0.1 },
@@ -256,6 +256,7 @@ function init () {
   gl.useProgram(null)
 
   requestAnimationFrame(renderFrame)
+  
 }
 
 let a = true
@@ -267,26 +268,26 @@ function renderFrame (ts) {
   const dt = ts - oldTime
   oldTime = ts
 
-  // for (let i = 0; i < CONFIG.ballsCount; i++) {
-  //   ballsVelocitiesArray[i * 2 + 1] += CONFIG.gravity
-  //   ballsOffsetsArray[i * 2 + 0] += ballsVelocitiesArray[i * 2 + 0]
-  //   ballsOffsetsArray[i * 2 + 1] += ballsVelocitiesArray[i * 2 + 1]
+  for (let i = 0; i < CONFIG.ballsCount; i++) {
+    ballsVelocitiesArray[i * 2 + 1] += CONFIG.gravity
+    ballsOffsetsArray[i * 2 + 0] += ballsVelocitiesArray[i * 2 + 0]
+    ballsOffsetsArray[i * 2 + 1] += ballsVelocitiesArray[i * 2 + 1]
 
 
-  //   if (ballsOffsetsArray[i * 2 + 0] < CONFIG.ballRadius / 2) {
-  //     ballsOffsetsArray[i * 2 + 0] = CONFIG.ballRadius / 2
-  //     ballsVelocitiesArray[i * 2 + 0] *= -1
-  //   }
-  //   if (ballsOffsetsArray[i * 2 + 0] > innerWidth - CONFIG.ballRadius / 2) {
-  //     ballsOffsetsArray[i * 2 + 0] = innerWidth - CONFIG.ballRadius / 2
-  //     ballsVelocitiesArray[i * 2 + 0] *= -1
-  //   }
+    if (ballsOffsetsArray[i * 2 + 0] < CONFIG.ballRadius / 2) {
+      ballsOffsetsArray[i * 2 + 0] = CONFIG.ballRadius / 2
+      ballsVelocitiesArray[i * 2 + 0] *= -1
+    }
+    if (ballsOffsetsArray[i * 2 + 0] > innerWidth - CONFIG.ballRadius / 2) {
+      ballsOffsetsArray[i * 2 + 0] = innerWidth - CONFIG.ballRadius / 2
+      ballsVelocitiesArray[i * 2 + 0] *= -1
+    }
 
-  //   if (ballsOffsetsArray[i * 2 + 1] - CONFIG.ballRadius > innerHeight) {
-  //     ballsOffsetsArray[i * 2 + 1] = -CONFIG.ballRadius
-  //     ballsVelocitiesArray[i * 2 + 1] = 5 + Math.random() * 3
-  //   }
-  // }
+    if (ballsOffsetsArray[i * 2 + 1] - CONFIG.ballRadius > innerHeight) {
+      ballsOffsetsArray[i * 2 + 1] = -CONFIG.ballRadius
+      ballsVelocitiesArray[i * 2 + 1] = 5 + Math.random() * 3
+    }
+  }
 
   gl.bindBuffer(gl.ARRAY_BUFFER, ballsOffsetsBuffer)
   gl.bufferData(gl.ARRAY_BUFFER, ballsOffsetsArray, gl.DYNAMIC_DRAW)
@@ -330,17 +331,6 @@ function resize () {
 }
 
 /* ------- WebGL helpers ------- */
-function makeQuadVertices (width, height) {
-  return new Float32Array([
-    -width / 2,  height / 2,
-     width / 2,  height / 2,
-     width / 2, -height / 2,
-    -width / 2,  height / 2,
-     width / 2, -height / 2,
-    -width / 2, -height / 2
-  ])
-}
-
 function makeQuadUVs () {
   return new Float32Array([0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1])
 }
