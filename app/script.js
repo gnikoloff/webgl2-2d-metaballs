@@ -1,6 +1,12 @@
+import './style.css'
+
 const contentWrapper = document.querySelector('.content')
 const canvas = document.createElement('canvas')
 const gl = canvas.getContext('webgl2')
+
+if (!gl) {
+  showWebGL2NotSupported()
+}
 
 const CONFIG = {
   ballRadius: 50
@@ -155,4 +161,57 @@ function makeProjection (width, height) {
     0, 0, 0, 0,
     -1, 1, 0, 1,
   ])
+}
+
+function showWebGL2NotSupported () {
+  const errorMessageWrapper = document.createElement('div')
+  if (isIOS()) {
+    const iOSVersion = getIOSVersion().major
+    if (iOSVersion === 13) {
+      errorMessageWrapper.innerHTML = `
+        <p>Please update your device to iOS / iPadOS 14 so you can see this demo.</p>
+      `
+    } else if (iOSVersion === 14) {
+      errorMessageWrapper.innerHTML = `
+        <p>In order to see WebGL2 content, you need to enable it from your device settings.</p>
+        <p>Settings > Safari > Advanced > Experimental Features > WebGL2.0</p>
+      `
+    }
+  } else {
+    errorMessageWrapper.innerHTML = `
+      <h1>Your browser does not support WebGL2</h1>
+      <p>Please try one of these alternative browsers:</p>
+      <ul>
+        <li>Microsoft Edge (version 79+)</li>
+        <li>Mozilla Firefox (version 51+)</li>
+        <li>Google Chrome (version 56+)</li>
+        <li>Opera (version 43+)</li>
+      </ul>
+    `
+  }
+  errorMessageWrapper.classList.add('webgl2-error')
+  contentWrapper.appendChild(errorMessageWrapper)
+}
+
+/* ------- Generic helpers ------- */
+function isIOS () {
+  return (/AppleWebKit/.test(navigator.userAgent) && /Mobile\/\w+/.test(navigator.userAgent)) || isIPadOS()
+}
+
+function isIPadOS () {
+  return navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1 && !window.MSStream
+}
+
+function getIOSVersion () {
+  const found = navigator.userAgent.match(/(iPhone|iPad); (CPU iPhone|CPU) OS (\d+)_(\d+)(_(\d+))?\s+/)
+  if (!found || found.length < 4) {
+    return {
+      major: 0,
+      minor: 0
+    }
+  }
+  return {
+    major: parseInt(found[3], 10),
+    minor: parseInt(found[4], 10)
+  }
 }
