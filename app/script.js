@@ -9,6 +9,8 @@ const contentWrapper = document.querySelector('.content')
 const canvas = document.createElement('canvas')
 const gl = canvas.getContext('webgl2')
 
+const dpr = Math.max(devicePixelRatio || 1, 3)
+
 if (!gl) {
   showWebGL2NotSupported()
 }
@@ -265,10 +267,10 @@ function renderFrame (ts) {
 }
 
 function resize () {
-  canvas.width = innerWidth * devicePixelRatio
-  canvas.height = innerHeight * devicePixelRatio
-  canvas.style.width = `${innerWidth}`
-  canvas.style.height = `${innerHeight}`
+  canvas.width = innerWidth * dpr
+  canvas.height = innerHeight * dpr
+  canvas.style.width = `${innerWidth}px`
+  canvas.style.height = `${innerHeight}px`
 }
 
 /* ------- WebGL helpers ------- */
