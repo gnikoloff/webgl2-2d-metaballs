@@ -9,7 +9,7 @@ const contentWrapper = document.querySelector('.content')
 const canvas = document.createElement('canvas')
 const gl = canvas.getContext('webgl2')
 
-const dpr = Math.max(devicePixelRatio || 1, 3)
+const dpr = devicePixelRatio > 2.5 ? 2.5 : devicePixelRatio
 
 if (!gl) {
   showWebGL2NotSupported()
