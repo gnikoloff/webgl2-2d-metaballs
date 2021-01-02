@@ -1,5 +1,5 @@
 const CONFIG = {
-  ballsCount: 100,
+  ballsCount: 300,
   ballRadius: 150
 }
 
@@ -14,6 +14,7 @@ const ballsOffsetsBuffer = gl.createBuffer()
 let oldTime = 0
 
 let quadWebGLProgram
+let quadTextureUniformLoc
 let ballsWebGLProgram
 let ballsOffsetsArray
 
@@ -124,12 +125,27 @@ let ballsOffsetsArray
     shaderSource: `#version 300 es
       precision highp float;
 
+      uniform sampler2D u_texture;
+
       in vec2 v_uv;
 
       out vec4 outputColor;
 
       void main () {
-        outputColor = vec4(v_uv, 0.0, 0.5);
+        vec4 inputColor = texture(u_texture, v_uv);
+
+        float cutoff = 0.52;
+        float threshold = 0.015;
+        cutoff = step(cutoff, inputColor.a);
+
+        vec4 baseColor = vec4(1.0, 0.0, 0.0, 1.0);
+        vec4 metaballsColor = vec4(0.0, 1.0, 0.0, 1.0);
+
+        outputColor = mix(baseColor, metaballsColor, cutoff);
+
+        // outputColor = mix(inputColor, mix(baseColor, metaballsColor, cutoff), 0.3);
+
+        // outputColor = inputColor;
       }
     `
   })
@@ -190,7 +206,7 @@ function init () {
 
   gl.enable(gl.BLEND)
   gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
-
+  // gl.blendEquation(gl.FUNC_SUBTRACT)
 
   const projectionMatrix = makeProjectionMatrix(innerWidth / 2, innerHeight / 2)
 
@@ -202,6 +218,9 @@ function init () {
   gl.useProgram(null)
 
   gl.useProgram(quadWebGLProgram)
+  quadTextureUniformLoc = gl.getUniformLocation(quadWebGLProgram, 'u_texture')
+  gl.uniform1i(quadTextureUniformLoc, 0)
+
   u_projectionMatrix = gl.getUniformLocation(quadWebGLProgram, 'u_projectionMatrix')
   gl.uniformMatrix4fv(u_projectionMatrix, false, projectionMatrix)
   gl.useProgram(null)
@@ -213,11 +232,13 @@ function renderFrame (ts) {
   const dt = ts - oldTime
   oldTime = ts
   
-  gl.viewport(0, 0, canvas.width, canvas.height)
-  gl.clearColor(0.1, 0.1, 0.1, 1.0)
-  gl.clear(gl.COLOR_BUFFER_BIT)
+  gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight)
 
   gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer)
+
+  gl.viewport(0, 0, innerWidth, innerHeight)
+  gl.clearColor(0.1, 0.1, 0.1, 1.0)
+  gl.clear(gl.COLOR_BUFFER_BIT)
 
   gl.bindVertexArray(ballsVertexArrayObject)
   gl.useProgram(ballsWebGLProgram)
@@ -228,16 +249,18 @@ function renderFrame (ts) {
 
   gl.bindVertexArray(quadVertexArrayObject)
   gl.useProgram(quadWebGLProgram)
+  gl.bindTexture(gl.TEXTURE_2D, targetTexture)
   gl.drawArrays(gl.TRIANGLES, 0, 6)
   gl.useProgram(null)
   gl.bindVertexArray(null)
+  gl.bindTexture(gl.TEXTURE_2D, null)
 
   requestAnimationFrame(renderFrame)
 }
 
 function resize () {
-  canvas.width = innerWidth
-  canvas.height = innerHeight
+  canvas.width = innerWidth * devicePixelRatio
+  canvas.height = innerHeight * devicePixelRatio
   canvas.style.width = `${innerWidth}`
   canvas.style.height = `${innerHeight}`
 }
