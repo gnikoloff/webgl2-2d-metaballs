@@ -74,7 +74,7 @@ let ballsVelocitiesArray
       out vec4 outputColor;
 
       void main () {
-        outputColor = vec4(0, 0, 1, 1);
+        outputColor = vec4(0.94, 0.76, 0.05, 1);
       }
     `,
   })
@@ -225,6 +225,14 @@ let ballsVelocitiesArray
 
       out vec4 outputColor;
 
+      vec3 getNormalizedRGB (in float r, in float g, in float b) {
+        return vec3(
+          r / 255.0,
+          g / 255.0,
+          b / 255.0
+        );
+      }
+
       void main () {
         vec4 inputColor = texture(u_texture, v_uv);
 
@@ -234,8 +242,8 @@ let ballsVelocitiesArray
         float threshold = 0.005;
 
         outputColor = mix(
-          vec4(1, 0, 0, 1),
-          vec4(0, 0, 1, 1),
+          vec4(getNormalizedRGB(44.0, 62.0, 80.0), 1),
+          vec4(getNormalizedRGB(230.0, 126.0, 34.0), 1),
           cutoff
         );
 
@@ -244,7 +252,7 @@ let ballsVelocitiesArray
         cutoff = smoothstep(cutoffThreshold - threshold, cutoffThreshold + threshold, inputColor.a);
         outputColor = mix(
           outputColor,
-          vec4(1, 0, 0, 1),
+          vec4(getNormalizedRGB(44.0, 62.0, 80.0), 1.0),
           cutoff
         );
 
@@ -253,7 +261,7 @@ let ballsVelocitiesArray
         cutoff = smoothstep(cutoffThreshold - threshold, cutoffThreshold + threshold, inputColor.a);
         outputColor = mix(
           outputColor,
-          vec4(0, 1, 0, 1),
+          vec4(getNormalizedRGB(243.0, 156.0, 18.0), 1.0),
           cutoff
         );
 
@@ -388,12 +396,12 @@ function renderFrame (ts) {
     ballsOffsetsArray[i * 2 + 1] += ballsVelocitiesArray[i * 2 + 1]
 
 
-    if (ballsOffsetsArray[i * 2 + 0] < CONFIG.ballRadius / 2) {
-      ballsOffsetsArray[i * 2 + 0] = CONFIG.ballRadius / 2
+    if (ballsOffsetsArray[i * 2 + 0] < 0) {
+      ballsOffsetsArray[i * 2 + 0] = 0
       ballsVelocitiesArray[i * 2 + 0] *= -1
     }
-    if (ballsOffsetsArray[i * 2 + 0] > innerWidth - CONFIG.ballRadius / 2) {
-      ballsOffsetsArray[i * 2 + 0] = innerWidth - CONFIG.ballRadius / 2
+    if (ballsOffsetsArray[i * 2 + 0] > innerWidth) {
+      ballsOffsetsArray[i * 2 + 0] = innerWidth
       ballsVelocitiesArray[i * 2 + 0] *= -1
     }
 
