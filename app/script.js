@@ -4,7 +4,7 @@ const CONFIG = {
   ballsCount: 100,
   ballRadius: isMobileBrowser() ? 75 : 250,
   gravity: 0.05,
-  lineWidth: 400,
+  textQuadWidth: 400,
   startVelocityX: { min: 0, max: 5 },
   startVelocityY: { min: 1, max: 3 },
 }
@@ -19,89 +19,170 @@ if (!gl) {
   showWebGL2NotSupported()
 }
 
-const lineVertexArrayObject = gl.createVertexArray()
+// const lineVertexArrayObject = gl.createVertexArray()
+const textQuadVertexArrayObject = gl.createVertexArray()
 const quadVertexArrayObject = gl.createVertexArray()
 const ballsVertexArrayObject = gl.createVertexArray()
 
 const ballsOffsetsBuffer = gl.createBuffer()
 
+const {
+  texture: textTexture,
+  width: textTextureWidth,
+  height: textTextureHeight,
+} = makeTextTexture('LOREM')
+
 let oldTime = 0
-let lineAngle = 0
+// let lineAngle = 0
 
 // WebGL Programs
-let lineWebGLProgram
+// let lineWebGLProgram
+let textQuadWebGLProgram
 let quadWebGLProgram
 let ballsWebGLProgram
 
 let quadTextureUniformLoc
-let lineAngleUniformLoc
+// let lineAngleUniformLoc
 
-let lineVertexArray
+// let lineVertexArray
 let ballsOffsetsArray
 // Not for rendering, just storing the balls velocities
 let ballsVelocitiesArray
 
-/* ------- Create horizontal line WebGL program ------- */
 {
   const vertexShader = makeWebglShader(gl, {
     shaderType: gl.VERTEX_SHADER,
     shaderSource: `#version 300 es
       uniform mat4 u_projectionMatrix;
       uniform vec2 u_resolution;
-      uniform float u_angle;
 
       in vec4 a_position;
+      in vec2 a_uv;
 
-      mat4 rotationZ( in float angle ) {
-        return mat4(
-          cos(angle),	-sin(angle), 0.0, 0.0,
-          sin(angle),	 cos(angle), 0.0,	0.0,
-          0.0, 0.0, 1.0, 0.0,
-          0.0, 0.0, 0.0, 1.0
-        );
-      }
+      out vec2 v_uv;
 
       void main () {
-        gl_Position = u_projectionMatrix * (rotationZ(u_angle) * a_position + vec4(u_resolution.xy / 2.0, 0.0, 1.0));
+        gl_Position = u_projectionMatrix * (a_position + vec4(u_resolution.xy / 2.0, 0.0, 1.0));
+
+        v_uv = a_uv;
       }
-    `,
+    `
   })
   const fragmentShader = makeWebglShader(gl, {
     shaderType: gl.FRAGMENT_SHADER,
     shaderSource: `#version 300 es
       precision highp float;
 
+      uniform sampler2D u_textTexture;
+
+      in vec2 v_uv;
+
       out vec4 outputColor;
 
       void main () {
-        outputColor = vec4(0.94, 0.76, 0.05, 1);
+        outputColor = texture(u_textTexture, v_uv);
       }
-    `,
+    `
   })
-  lineWebGLProgram = makeWebglProram(gl, {
+  textQuadWebGLProgram = makeWebglProram(gl, {
     vertexShader,
-    fragmentShader,
+    fragmentShader
   })
 }
 
-/* ------- Create and assign horizontal line WebGL attributes ------- */
 {
-  lineVertexArray = new Float32Array([-CONFIG.lineWidth / 2, 0, CONFIG.lineWidth / 2, 0])
+  const vertexArray = new Float32Array([
+    -textTextureWidth / 2,  textTextureHeight / 2,
+     textTextureWidth / 2,  textTextureHeight / 2,
+     textTextureWidth / 2, -textTextureHeight / 2,
+    -textTextureWidth / 2,  textTextureHeight / 2,
+     textTextureWidth / 2, -textTextureHeight / 2,
+    -textTextureWidth / 2, -textTextureHeight / 2
+  ])
+  const uvsArray = makeQuadUVs()
 
-  
+  const a_position = gl.getAttribLocation(textQuadWebGLProgram, 'a_position')
+  const a_uv = gl.getAttribLocation(textQuadWebGLProgram, 'a_uv')
+
   const vertexBuffer = gl.createBuffer()
+  const uvsBuffer = gl.createBuffer()
 
-  const a_position = gl.getAttribLocation(lineWebGLProgram, 'a_position')
-  
-  gl.bindVertexArray(lineVertexArrayObject)
+  gl.bindVertexArray(textQuadVertexArrayObject)
 
   gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer)
-  gl.bufferData(gl.ARRAY_BUFFER, lineVertexArray, gl.STATIC_DRAW)
+  gl.bufferData(gl.ARRAY_BUFFER, vertexArray, gl.STATIC_DRAW)
   gl.enableVertexAttribArray(a_position)
   gl.vertexAttribPointer(a_position, 2, gl.FLOAT, false, 0, 0)
 
+  gl.bindBuffer(gl.ARRAY_BUFFER, uvsBuffer)
+  gl.bufferData(gl.ARRAY_BUFFER, uvsArray, gl.STATIC_DRAW)
+  gl.enableVertexAttribArray(a_uv)
+  gl.vertexAttribPointer(a_uv, 2, gl.FLOAT, false, 0, 0)
+
   gl.bindVertexArray(null)
 }
+
+// /* ------- Create horizontal line WebGL program ------- */
+// {
+//   const vertexShader = makeWebglShader(gl, {
+//     shaderType: gl.VERTEX_SHADER,
+//     shaderSource: `#version 300 es
+//       uniform mat4 u_projectionMatrix;
+//       uniform vec2 u_resolution;
+//       uniform float u_angle;
+
+//       in vec4 a_position;
+
+//       mat4 rotationZ( in float angle ) {
+//         return mat4(
+//           cos(angle),	-sin(angle), 0.0, 0.0,
+//           sin(angle),	 cos(angle), 0.0,	0.0,
+//           0.0, 0.0, 1.0, 0.0,
+//           0.0, 0.0, 0.0, 1.0
+//         );
+//       }
+
+//       void main () {
+//         gl_Position = u_projectionMatrix * (rotationZ(u_angle) * a_position + vec4(u_resolution.xy / 2.0, 0.0, 1.0));
+//       }
+//     `,
+//   })
+//   const fragmentShader = makeWebglShader(gl, {
+//     shaderType: gl.FRAGMENT_SHADER,
+//     shaderSource: `#version 300 es
+//       precision highp float;
+
+//       out vec4 outputColor;
+
+//       void main () {
+//         outputColor = vec4(0.94, 0.76, 0.05, 1);
+//       }
+//     `,
+//   })
+//   lineWebGLProgram = makeWebglProram(gl, {
+//     vertexShader,
+//     fragmentShader,
+//   })
+// }
+
+// /* ------- Create and assign horizontal line WebGL attributes ------- */
+// {
+//   lineVertexArray = new Float32Array([-CONFIG.lineWidth / 2, 0, CONFIG.lineWidth / 2, 0])
+
+  
+//   const vertexBuffer = gl.createBuffer()
+
+//   const a_position = gl.getAttribLocation(lineWebGLProgram, 'a_position')
+  
+//   gl.bindVertexArray(lineVertexArrayObject)
+
+//   gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer)
+//   gl.bufferData(gl.ARRAY_BUFFER, lineVertexArray, gl.STATIC_DRAW)
+//   gl.enableVertexAttribArray(a_position)
+//   gl.vertexAttribPointer(a_position, 2, gl.FLOAT, false, 0, 0)
+
+//   gl.bindVertexArray(null)
+// }
 
 /* ------- Create metaballs WebGL program ------- */
 {
@@ -247,7 +328,7 @@ let ballsVelocitiesArray
           cutoff
         );
 
-        cutoffThreshold += 0.001;
+        cutoffThreshold += 0.0025;
 
         cutoff = step(cutoffThreshold, inputColor.a);
         outputColor = mix(
@@ -340,6 +421,7 @@ gl.bindFramebuffer(gl.FRAMEBUFFER, null)
 
 init()
 function init () {
+  canvas.id = 'metaballs-canvas'
   contentWrapper.appendChild(canvas)
   resize()
   window.addEventListener('resize', resize)
@@ -365,16 +447,28 @@ function init () {
   gl.uniformMatrix4fv(u_projectionMatrix, false, projectionMatrix)
   gl.useProgram(null)
 
-  gl.useProgram(lineWebGLProgram)
-  u_projectionMatrix = gl.getUniformLocation(lineWebGLProgram, 'u_projectionMatrix')
+  gl.useProgram(textQuadWebGLProgram)
+  u_projectionMatrix = gl.getUniformLocation(textQuadWebGLProgram, 'u_projectionMatrix')
   gl.uniformMatrix4fv(u_projectionMatrix, false, projectionMatrix)
+  gl.useProgram(null)
 
-  const u_resolution = gl.getUniformLocation(lineWebGLProgram, 'u_resolution')
+  // gl.useProgram(lineWebGLProgram)
+  // u_projectionMatrix = gl.getUniformLocation(lineWebGLProgram, 'u_projectionMatrix')
+  // gl.uniformMatrix4fv(u_projectionMatrix, false, projectionMatrix)
+
+  // const u_resolution = gl.getUniformLocation(lineWebGLProgram, 'u_resolution')
+  // gl.uniform2f(u_resolution, innerWidth, innerHeight)
+
+  // lineAngleUniformLoc = gl.getUniformLocation(lineWebGLProgram, 'u_angle')
+  // gl.uniform1f(lineAngleUniformLoc, lineAngle * Math.PI / 180)
+
+  // gl.useProgram(null)
+
+  gl.useProgram(textQuadWebGLProgram)
+  const u_resolution = gl.getUniformLocation(textQuadWebGLProgram, 'u_resolution')
   gl.uniform2f(u_resolution, innerWidth, innerHeight)
-
-  lineAngleUniformLoc = gl.getUniformLocation(lineWebGLProgram, 'u_angle')
-  gl.uniform1f(lineAngleUniformLoc, lineAngle * Math.PI / 180)
-
+  const u_textTexture = gl.getUniformLocation(textQuadWebGLProgram, 'u_textTexture')
+  gl.uniform1i(u_textTexture, 0)
   gl.useProgram(null)
 
   requestAnimationFrame(renderFrame)
@@ -411,7 +505,7 @@ function renderFrame (ts) {
     }
   }
 
-  checkLine()
+  // checkLine()
 
   gl.bindBuffer(gl.ARRAY_BUFFER, ballsOffsetsBuffer)
   gl.bufferData(gl.ARRAY_BUFFER, ballsOffsetsArray, gl.DYNAMIC_DRAW)
@@ -446,12 +540,21 @@ function renderFrame (ts) {
 
   // lineAngle = Math.sin(ts * 0.001) * 30
 
-  gl.bindVertexArray(lineVertexArrayObject)
-  gl.useProgram(lineWebGLProgram)
-  gl.uniform1f(lineAngleUniformLoc, -lineAngle * Math.PI / 180)
-  gl.drawArrays(gl.LINES, 0, 2)
-  gl.useProgram(null)
+  // gl.bindVertexArray(lineVertexArrayObject)
+  // gl.useProgram(lineWebGLProgram)
+  // gl.uniform1f(lineAngleUniformLoc, -lineAngle * Math.PI / 180)
+  // gl.drawArrays(gl.LINES, 0, 2)
+  // gl.useProgram(null)
+  // gl.bindVertexArray(null)
+
+  // render quad
+  gl.useProgram(textQuadWebGLProgram)
+  gl.bindVertexArray(textQuadVertexArrayObject)
+  gl.bindTexture(gl.TEXTURE_2D, textTexture)
+  gl.drawArrays(gl.TRIANGLES, 0, 6)
+  gl.bindTexture(gl.TEXTURE_2D, null)
   gl.bindVertexArray(null)
+  gl.useProgram(null)
 
   requestAnimationFrame(renderFrame)
 }
@@ -555,20 +658,68 @@ function resize () {
   gl.uniformMatrix4fv(u_projectionMatrix, false, projectionMatrix)
   gl.useProgram(null)
 
-  gl.useProgram(lineWebGLProgram)
-  u_projectionMatrix = gl.getUniformLocation(lineWebGLProgram, 'u_projectionMatrix')
-  gl.uniformMatrix4fv(u_projectionMatrix, false, projectionMatrix)
-
-  const u_resolution = gl.getUniformLocation(lineWebGLProgram, 'u_resolution')
-  gl.uniform2f(u_resolution, innerWidth, innerHeight)
-
-  lineAngleUniformLoc = gl.getUniformLocation(lineWebGLProgram, 'u_angle')
-  gl.uniform1f(lineAngleUniformLoc, lineAngle * Math.PI / 180)
-
-  gl.useProgram(null)
+  // gl.useProgram(lineWebGLProgram)
+  // u_projectionMatrix = gl.getUniformLocation(lineWebGLProgram, 'u_projectionMatrix')
+  // gl.uniformMatrix4fv(u_projectionMatrix, false, projectionMatrix)
+  // const u_resolution = gl.getUniformLocation(lineWebGLProgram, 'u_resolution')
+  // gl.uniform2f(u_resolution, innerWidth, innerHeight)
+  // lineAngleUniformLoc = gl.getUniformLocation(lineWebGLProgram, 'u_angle')
+  // gl.uniform1f(lineAngleUniformLoc, lineAngle * Math.PI / 180)
+  // gl.useProgram(null)
 }
 
 /* ------- WebGL helpers ------- */
+function makeTextTexture (text) {
+  const canvas = document.createElement('canvas')
+  const ctx = canvas.getContext('2d')
+
+  // canvas.setAttribute('style', `
+  //   position: fixed;
+  //   top: 12px;
+  //   left: 12px;
+  //   z-index: 9999;
+  // `)
+  // document.body.appendChild(canvas)
+
+  // debugger
+
+  canvas.width = CONFIG.textQuadWidth
+
+  const referenceFontSize = 42
+
+  ctx.font = `${referenceFontSize}px sans-serif`
+  let textMetrics = ctx.measureText(text)
+
+  const widthDelta = canvas.width / textMetrics.width
+  const realFontSize = referenceFontSize * widthDelta
+
+  ctx.font = `${realFontSize}px sans-serif`
+
+  textMetrics = ctx.measureText(text)
+
+  canvas.height = textMetrics.actualBoundingBoxAscent
+
+  ctx.fillStyle = 'white'
+  ctx.font = `${realFontSize}px sans-serif`
+  ctx.fillText(text, 0, canvas.height)
+
+  gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true)
+
+  const texture = gl.createTexture()
+  gl.bindTexture(gl.TEXTURE_2D, texture)
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, canvas)
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+  gl.bindTexture(gl.TEXTURE_2D, null)
+
+  return {
+    texture,
+    width: canvas.width,
+    height: canvas.height,
+  }
+}
+
 function makeQuadUVs () {
   return new Float32Array([0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1])
 }
