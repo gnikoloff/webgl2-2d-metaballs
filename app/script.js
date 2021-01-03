@@ -57,7 +57,7 @@ let ballsOffsetsArray
 
       void main () {
         float dist = distance(v_uv, vec2(0.5));
-        float c = 0.5 - dist;
+        float c = clamp(0.5 - dist, 0.0, 1.0);
         outputColor = vec4(vec3(1.0), c);
       }
     `
@@ -204,11 +204,20 @@ let ballsOffsetsArray
 }
 
 /* ------- Create WebGL texture to render to ------- */
+let textureInternalFormat = gl.RGBA32F
+if (!gl.getExtension('EXT_color_buffer_float')) {
+  gl.getExtension('EXT_color_buffer_half_float')
+  textureInternalFormat = gl.RGBA16F
+}
+if (!gl.getExtension('OES_texture_float_linear')) {
+  gl.getExtension('OES_texture_half_float_linear')
+}
+
 const targetTextureWidth = innerWidth * dpr
 const targetTextureHeight = innerHeight * dpr
 const targetTexture = gl.createTexture()
 gl.bindTexture(gl.TEXTURE_2D, targetTexture)
-gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, targetTextureWidth, targetTextureHeight, 0, gl.RGBA, gl.UNSIGNED_BYTE, null)
+gl.texImage2D(gl.TEXTURE_2D, 0, textureInternalFormat, targetTextureWidth, targetTextureHeight, 0, gl.RGBA, gl.FLOAT, null)
 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
