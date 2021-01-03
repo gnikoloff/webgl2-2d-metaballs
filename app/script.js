@@ -3,9 +3,9 @@ import './style.css'
 const CONFIG = {
   ballsCount: 100,
   ballRadius: isMobileBrowser() ? 75 : 250,
-  gravity: 0.1,
-  lineWidth: innerWidth / 2,
-  startVelocityX: { min: 0, max: 0.1 },
+  gravity: 0.05,
+  lineWidth: 400,
+  startVelocityX: { min: 0, max: 5 },
   startVelocityY: { min: 1, max: 3 },
 }
 
@@ -249,7 +249,7 @@ let ballsVelocitiesArray
 
         cutoffThreshold += 0.001;
 
-        cutoff = smoothstep(cutoffThreshold - threshold, cutoffThreshold + threshold, inputColor.a);
+        cutoff = step(cutoffThreshold, inputColor.a);
         outputColor = mix(
           outputColor,
           vec4(getNormalizedRGB(44.0, 62.0, 80.0), 1.0),
@@ -258,7 +258,7 @@ let ballsVelocitiesArray
 
         cutoffThreshold += 0.05;
 
-        cutoff = smoothstep(cutoffThreshold - threshold, cutoffThreshold + threshold, inputColor.a);
+        cutoff = step(cutoffThreshold, inputColor.a);
         outputColor = mix(
           outputColor,
           vec4(getNormalizedRGB(243.0, 156.0, 18.0), 1.0),
@@ -444,7 +444,7 @@ function renderFrame (ts) {
     gl.bindTexture(gl.TEXTURE_2D, null)
   }
 
-  lineAngle = Math.sin(ts * 0.001) * 30
+  // lineAngle = Math.sin(ts * 0.001) * 30
 
   gl.bindVertexArray(lineVertexArrayObject)
   gl.useProgram(lineWebGLProgram)
@@ -467,8 +467,8 @@ function getLineBounds () {
     const maxX = Math.max(x1, x2)
     const maxY = Math.max(y1, y2)
     return {
-      x: x1 + minX,
-      y: y1 + minY,
+      x: innerWidth / 2 + x1 + minX + CONFIG.lineWidth / 2,
+      y: innerHeight / 2 + y1 + minY + CONFIG.lineWidth / 2,
       width: maxX - minX,
       height: maxY - minY,
     }
