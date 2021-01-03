@@ -303,16 +303,21 @@ let ballsVelocitiesArray
 }
 
 /* ------- Create WebGL texture to render to ------- */
-  gl.getExtension('EXT_color_buffer_float')
-  gl.getExtension('EXT_float_blend')
-  gl.getExtension('OES_texture_float_linear')
+let textureInternalFormat = gl.RGBA32F
+if (!gl.getExtension('EXT_color_buffer_float')) {
+  gl.getExtension('EXT_color_buffer_half_float')
+  textureInternalFormat = gl.RGBA16F
+}
+if (!gl.getExtension('OES_texture_float_linear')) {
+  gl.getExtension('OES_texture_half_float_linear')
+}
 
 
 const targetTextureWidth = innerWidth * dpr
 const targetTextureHeight = innerHeight * dpr
 const targetTexture = gl.createTexture()
 gl.bindTexture(gl.TEXTURE_2D, targetTexture)
-gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, targetTextureWidth, targetTextureHeight, 0, gl.RGBA, gl.FLOAT, null)
+gl.texImage2D(gl.TEXTURE_2D, 0, textureInternalFormat, targetTextureWidth, targetTextureHeight, 0, gl.RGBA, gl.FLOAT, null)
 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
 gl.texParameterf(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
