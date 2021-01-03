@@ -4,7 +4,6 @@
   "description": "Tutorial on implementing 2D metaballs using WebGL2",
   "main": "script.js",
   "scripts": {
-    "build": "rollup -c",
     "watch": "rollup -c -w",
     "serve": "http-server",
     "start:dev": "run-p serve watch"
