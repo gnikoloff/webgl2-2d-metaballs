@@ -420,7 +420,7 @@ function renderFrame (ts) {
     gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer)
   }
 
-  gl.viewport(0, 0, targetTextureWidth, targetTextureHeight)
+  gl.viewport(0, 0, canvas.width, canvas.height)
   gl.clearColor(0.1, 0.1, 0.1, 0)
   gl.clear(gl.COLOR_BUFFER_BIT)
 
@@ -540,6 +540,32 @@ function resize () {
   canvas.height = innerHeight * dpr
   canvas.style.width = `${innerWidth}px`
   canvas.style.height = `${innerHeight}px`
+
+  const projectionMatrix = makeProjectionMatrix(innerWidth / 2, innerHeight / 2)
+
+  let u_projectionMatrix
+
+  gl.useProgram(ballsWebGLProgram)
+  u_projectionMatrix = gl.getUniformLocation(ballsWebGLProgram, 'u_projectionMatrix')
+  gl.uniformMatrix4fv(u_projectionMatrix, false, projectionMatrix)
+  gl.useProgram(null)
+
+  gl.useProgram(quadWebGLProgram)
+  u_projectionMatrix = gl.getUniformLocation(quadWebGLProgram, 'u_projectionMatrix')
+  gl.uniformMatrix4fv(u_projectionMatrix, false, projectionMatrix)
+  gl.useProgram(null)
+
+  gl.useProgram(lineWebGLProgram)
+  u_projectionMatrix = gl.getUniformLocation(lineWebGLProgram, 'u_projectionMatrix')
+  gl.uniformMatrix4fv(u_projectionMatrix, false, projectionMatrix)
+
+  const u_resolution = gl.getUniformLocation(lineWebGLProgram, 'u_resolution')
+  gl.uniform2f(u_resolution, innerWidth, innerHeight)
+
+  lineAngleUniformLoc = gl.getUniformLocation(lineWebGLProgram, 'u_angle')
+  gl.uniform1f(lineAngleUniformLoc, lineAngle * Math.PI / 180)
+
+  gl.useProgram(null)
 }
 
 /* ------- WebGL helpers ------- */
