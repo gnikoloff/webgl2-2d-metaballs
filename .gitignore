@@ -2,3 +2,4 @@
 /.cache
 /dist
 package-lock.json
+.vercel
