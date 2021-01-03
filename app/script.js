@@ -1,8 +1,8 @@
 import './style.css'
 
 const CONFIG = {
-  ballsCount: 100,
-  ballRadius: isMobileBrowser() ? 75 : 250,
+  ballsCount: 500,
+  ballRadius: isMobileBrowser() ? 50 : 100,
   gravity: 0.1,
   lineWidth: innerWidth / 2,
   startVelocityX: { min: 0, max: 0.1 },
@@ -12,7 +12,7 @@ const CONFIG = {
 const contentWrapper = document.querySelector('.content')
 const canvas = document.createElement('canvas')
 const gl = canvas.getContext('webgl2')
-
+const mousePos = { x: 0, y: 0 }
 const dpr = devicePixelRatio > 2.5 ? 2.5 : devicePixelRatio
 
 if (!gl) {
@@ -234,26 +234,17 @@ let ballsVelocitiesArray
         float threshold = 0.005;
 
         outputColor = mix(
-          vec4(1, 0, 0, 1),
+          vec4(1, 1, 1, 1),
           vec4(0, 0, 1, 1),
-          cutoff
-        );
-
-        cutoffThreshold += 0.001;
-
-        cutoff = smoothstep(cutoffThreshold - threshold, cutoffThreshold + threshold, inputColor.a);
-        outputColor = mix(
-          outputColor,
-          vec4(1, 0, 0, 1),
           cutoff
         );
 
         cutoffThreshold += 0.05;
 
-        cutoff = smoothstep(cutoffThreshold - threshold, cutoffThreshold + threshold, inputColor.a);
+        cutoff = step(cutoffThreshold, inputColor.a);
         outputColor = mix(
           outputColor,
-          vec4(0, 1, 0, 1),
+          vec4(0.94, 0.29, 0.235, 1),
           cutoff
         );
 
@@ -370,6 +361,19 @@ function init () {
   gl.useProgram(null)
 
   requestAnimationFrame(renderFrame)
+
+  document.body.addEventListener('mousemove', e => {
+    if (e.pageX) {
+      mousePos.x = e.pageX
+    } else {
+      mousePos.x = e.changedTouches[0].pageX
+    }
+    if (e.pageY) {
+      mousePos.y = e.pageY
+    } else {
+      mousePos.y = e.changedTouches[0].pageY
+    }
+  })
   
 }
 
@@ -388,22 +392,29 @@ function renderFrame (ts) {
     ballsOffsetsArray[i * 2 + 1] += ballsVelocitiesArray[i * 2 + 1]
 
 
-    if (ballsOffsetsArray[i * 2 + 0] < CONFIG.ballRadius / 2) {
-      ballsOffsetsArray[i * 2 + 0] = CONFIG.ballRadius / 2
+    if (ballsOffsetsArray[i * 2 + 0] < 0) {
+      ballsOffsetsArray[i * 2 + 0] = 0
       ballsVelocitiesArray[i * 2 + 0] *= -1
     }
-    if (ballsOffsetsArray[i * 2 + 0] > innerWidth - CONFIG.ballRadius / 2) {
-      ballsOffsetsArray[i * 2 + 0] = innerWidth - CONFIG.ballRadius / 2
+    if (ballsOffsetsArray[i * 2 + 0] > innerWidth) {
+      ballsOffsetsArray[i * 2 + 0] = innerWidth
       ballsVelocitiesArray[i * 2 + 0] *= -1
     }
 
     if (ballsOffsetsArray[i * 2 + 1] - CONFIG.ballRadius > innerHeight) {
-      ballsOffsetsArray[i * 2 + 1] = -CONFIG.ballRadius
-      ballsVelocitiesArray[i * 2 + 1] = 5 + Math.random() * 3
+      // ballsOffsetsArray[i * 2 + 1] = -CONFIG.ballRadius
+      ballsVelocitiesArray[i * 2 + 0] = (Math.random() * 2 - 1) * 5
+      ballsVelocitiesArray[i * 2 + 1] = (Math.random() * 2 - 1) * 6
+
+      
+      // ballsVelocitiesArray[i * 2 + 1] = Math.random() * CONFIG.startVelocityY.max + CONFIG.startVelocityY.min
+
+      ballsOffsetsArray[i * 2 + 0] = mousePos.x
+      ballsOffsetsArray[i * 2 + 1] = mousePos.y
     }
   }
 
-  checkLine()
+  // checkLine()
 
   gl.bindBuffer(gl.ARRAY_BUFFER, ballsOffsetsBuffer)
   gl.bufferData(gl.ARRAY_BUFFER, ballsOffsetsArray, gl.DYNAMIC_DRAW)
@@ -436,14 +447,14 @@ function renderFrame (ts) {
     gl.bindTexture(gl.TEXTURE_2D, null)
   }
 
-  lineAngle = Math.sin(ts * 0.001) * 30
+  // lineAngle = Math.sin(ts * 0.001) * 30
 
-  gl.bindVertexArray(lineVertexArrayObject)
-  gl.useProgram(lineWebGLProgram)
-  gl.uniform1f(lineAngleUniformLoc, -lineAngle * Math.PI / 180)
-  gl.drawArrays(gl.LINES, 0, 2)
-  gl.useProgram(null)
-  gl.bindVertexArray(null)
+  // gl.bindVertexArray(lineVertexArrayObject)
+  // gl.useProgram(lineWebGLProgram)
+  // gl.uniform1f(lineAngleUniformLoc, -lineAngle * Math.PI / 180)
+  // gl.drawArrays(gl.LINES, 0, 2)
+  // gl.useProgram(null)
+  // gl.bindVertexArray(null)
 
   requestAnimationFrame(renderFrame)
 }
