@@ -5,8 +5,10 @@
   "main": "script.js",
   "scripts": {
     "watch": "rollup -c -w",
+    "build": "rollup -c",
     "serve": "http-server",
-    "start:dev": "run-p serve watch"
+    "start:dev": "run-p serve watch",
+    "start": "run-p serve build"
   },
   "repository": {
     "type": "git",
