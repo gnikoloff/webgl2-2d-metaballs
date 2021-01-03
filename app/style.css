@@ -13,5 +13,6 @@
 
 canvas {
   user-select: none;
+  -webkit-user-select: none;
   background: #111;
 }
