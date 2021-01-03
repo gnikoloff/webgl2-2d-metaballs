@@ -1,3 +1,5 @@
+import resolve from 'rollup-plugin-node-resolve'
+import commonjs from 'rollup-plugin-commonjs'
 import css from 'rollup-plugin-css-only'
 import copy from 'rollup-plugin-copy'
 
@@ -9,6 +11,8 @@ export default {
     format: 'iife'
   },
   plugins: [
+    resolve(),
+    commonjs(),
     copy({
       targets: [
         { src: 'index.html', dest: 'dist' },
