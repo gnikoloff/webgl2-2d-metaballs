@@ -32,6 +32,8 @@ const ballsVertexArrayObject = gl.createVertexArray()
 const ballsOffsetsBuffer = gl.createBuffer()
 
 let textTexture
+let textTextureWidth
+let textTextureHeight
 
 let oldTime = 0
 let fontLoaded = false
@@ -404,19 +406,21 @@ function init () {
     fontactive: () => {
       const {
         texture,
-        width: textTextureWidth,
-        height: textTextureHeight,
+        width,
+        height,
       } = makeTextTexture(CONFIG.labelText)
 
       textTexture = texture
+      textTextureWidth = width
+      textTextureHeight = height
 
       const vertexArray = new Float32Array([
-        -textTextureWidth / 2,  textTextureHeight / 2,
-        textTextureWidth / 2,  textTextureHeight / 2,
-        textTextureWidth / 2, -textTextureHeight / 2,
-        -textTextureWidth / 2,  textTextureHeight / 2,
-        textTextureWidth / 2, -textTextureHeight / 2,
-        -textTextureWidth / 2, -textTextureHeight / 2
+        -width / 2,  height / 2,
+         width / 2,  height / 2,
+         width / 2, -height / 2,
+        -width / 2,  height / 2,
+         width / 2, -height / 2,
+        -width / 2, -height / 2
       ])
       const uvsArray = makeQuadUVs()
 
@@ -520,6 +524,17 @@ function renderFrame (ts) {
       ballsOffsetsArray[i * 2 + 1] = -CONFIG.ballRadius
       ballsVelocitiesArray[i * 2 + 1] = 5 + Math.random() * 3
     }
+
+    if (
+      ballsOffsetsArray[i * 2 + 1] + CONFIG.ballRadius / 3 > innerHeight / 2 - textTextureHeight / 2 &&
+      ballsOffsetsArray[i * 2 + 1] < innerHeight / 2 + textTextureHeight / 2 &&
+      ballsOffsetsArray[i * 2 + 0] >= innerWidth / 2 - textTextureWidth / 2 &&
+      ballsOffsetsArray[i * 2 + 0] <= innerWidth / 2 + textTextureWidth / 2
+    ) {
+      ballsOffsetsArray[i * 2 + 1] = innerHeight / 2 - textTextureHeight / 2 - CONFIG.ballRadius / 3
+      ballsVelocitiesArray[i * 2 + 1] *= -0.1
+    }
+
   }
 
   // checkLine()
