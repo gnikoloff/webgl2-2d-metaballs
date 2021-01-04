@@ -2,6 +2,15 @@ import WebFont from 'webfontloader'
 import throttle from 'lodash.throttle'
 import * as dat from 'dat.gui'
 
+import quadVertexShaderSource from './quad.vert'
+import quadFragmentShaderSource from './quad.frag'
+
+import ballsVertexShaderSource from './balls.vert'
+import ballsFragmentShaderSource from './balls.frag'
+
+import lineVertexShaderSource from './line.vert'
+import lineFragmentShaderSource from './line.frag'
+
 import './style.css'
 
 const CONFIG = {
@@ -14,6 +23,9 @@ const CONFIG = {
   labelFontFamily: 'Josefin Sans',
   labelFontWeight: 400,
   labelText: 'LOREM',
+  grainSize: 1,
+  grainBlendFactor: 0.1,
+  animateGrain: true,
   palette: {
     backgroundColor: [44, 62, 80],
     thinBorderColor: [230, 126, 34],
@@ -60,6 +72,9 @@ let u_backgroundColor
 let u_thinBorderColor
 let u_fatBorderColor
 let u_metaballsColor
+let u_grainSize
+let u_grainBlendFactor
+let u_time
 // let lineAngleUniformLoc
 
 // let lineVertexArray
@@ -71,35 +86,13 @@ let ballsVelocitiesArray
   const vertexShader = makeWebglShader(gl, {
     shaderType: gl.VERTEX_SHADER,
     shaderSource: `#version 300 es
-      uniform mat4 u_projectionMatrix;
-      uniform vec2 u_resolution;
-
-      in vec4 a_position;
-      in vec2 a_uv;
-
-      out vec2 v_uv;
-
-      void main () {
-        gl_Position = u_projectionMatrix * (a_position + vec4(u_resolution.xy / 2.0, 0.0, 1.0));
-
-        v_uv = a_uv;
-      }
+      ${lineVertexShaderSource}
     `
   })
   const fragmentShader = makeWebglShader(gl, {
     shaderType: gl.FRAGMENT_SHADER,
     shaderSource: `#version 300 es
-      precision highp float;
-
-      uniform sampler2D u_textTexture;
-
-      in vec2 v_uv;
-
-      out vec4 outputColor;
-
-      void main () {
-        outputColor = texture(u_textTexture, v_uv);
-      }
+      ${lineFragmentShaderSource}
     `
   })
   textQuadWebGLProgram = makeWebglProram(gl, {
@@ -175,35 +168,13 @@ let ballsVelocitiesArray
   const vertexShader = makeWebglShader(gl, {
     shaderType: gl.VERTEX_SHADER,
     shaderSource: `#version 300 es
-      uniform mat4 u_projectionMatrix;
-      
-      in vec4 a_position;
-      in vec4 a_offsetPosition;
-      in vec2 a_uv;
-
-      out vec2 v_uv;
-
-      void main () {
-        vec4 correctOffsetedPosition = a_offsetPosition + a_position;
-        gl_Position = u_projectionMatrix * correctOffsetedPosition;
-        v_uv = a_uv;
-      }
+      ${ballsVertexShaderSource}
     `
   })
   const fragmentShader = makeWebglShader(gl, {
     shaderType: gl.FRAGMENT_SHADER,
     shaderSource: `#version 300 es
-      precision highp float;
-
-      in vec2 v_uv;
-
-      out vec4 outputColor;
-
-      void main () {
-        float dist = distance(v_uv, vec2(0.5));
-        float c = clamp(0.5 - dist, 0.0, 1.0);
-        outputColor = vec4(vec3(1.0), c);
-      }
+      ${ballsFragmentShaderSource}
     `
   })
   ballsWebGLProgram = makeWebglProram(gl, {
@@ -268,70 +239,13 @@ let ballsVelocitiesArray
   const vertexShader = makeWebglShader(gl, {
     shaderType: gl.VERTEX_SHADER,
     shaderSource: `#version 300 es
-      uniform mat4 u_projectionMatrix;
-
-      in vec4 a_position;
-      in vec2 a_uv;
-
-      out vec2 v_uv;
-
-      void main () {
-        gl_Position = u_projectionMatrix * a_position;
-        v_uv = a_uv;
-      }
+      ${quadVertexShaderSource}
     `
   })
   const fragmentShader = makeWebglShader(gl, {
     shaderType: gl.FRAGMENT_SHADER,
     shaderSource: `#version 300 es
-      precision highp float;
-
-      uniform sampler2D u_texture;
-      uniform vec3 u_backgroundColor;
-      uniform vec3 u_thinBorderColor;
-      uniform vec3 u_fatBorderColor;
-      uniform vec3 u_metaballsColor;
-
-      in vec2 v_uv;
-
-      out vec4 outputColor;
-
-      void main () {
-        vec4 inputColor = texture(u_texture, v_uv);
-
-        float cutoffThreshold = 0.14;
-
-        float cutoff = step(cutoffThreshold, inputColor.a);
-        float threshold = 0.005;
-
-        outputColor = mix(
-          vec4(u_backgroundColor, 1),
-          vec4(u_thinBorderColor, 1),
-          cutoff
-        );
-
-        cutoffThreshold += 0.0025;
-
-        cutoff = step(cutoffThreshold, inputColor.a);
-        outputColor = mix(
-          outputColor,
-          vec4(u_fatBorderColor, 1.0),
-          cutoff
-        );
-
-        cutoffThreshold += 0.05;
-
-        cutoff = step(cutoffThreshold, inputColor.a);
-        outputColor = mix(
-          outputColor,
-          vec4(u_metaballsColor, 1.0),
-          cutoff
-        );
-
-        // outputColor = mix(inputColor, mix(baseColor, metaballsColor, cutoff), 0.3);
-
-        // outputColor = inputColor;
-      }
+      ${quadFragmentShaderSource}
     `
   })
   quadWebGLProgram = makeWebglProram(gl, {
@@ -409,6 +323,17 @@ function init () {
   window.addEventListener('resize', resize)
 
   gui.add(CONFIG, 'gravity').min(0.05).max(0.5).step(0.05)
+  gui.add(CONFIG, 'grainSize').min(1).max(2).step(0.1).onChange(() => {
+    gl.useProgram(quadWebGLProgram)
+    gl.uniform1f(u_grainSize, CONFIG.grainSize)
+    gl.useProgram(null)
+  })
+  gui.add(CONFIG, 'grainBlendFactor').min(0).max(0.3).onChange(() => {
+    gl.useProgram(quadWebGLProgram)
+    gl.uniform1f(u_grainBlendFactor, CONFIG.grainBlendFactor)
+    gl.useProgram(null)
+  })
+  gui.add(CONFIG, 'animateGrain')
   gui.add(CONFIG, 'labelText').onChange(renderLabelQuad)
   gui.add(CONFIG, 'labelFontFamily').onChange(throttle(e => {
     loadFont().then(renderLabelQuad)
@@ -447,6 +372,7 @@ function init () {
   const projectionMatrix = makeProjectionMatrix(innerWidth / 2, innerHeight / 2)
 
   let u_projectionMatrix
+  let u_resolution
 
   gl.useProgram(ballsWebGLProgram)
   u_projectionMatrix = gl.getUniformLocation(ballsWebGLProgram, 'u_projectionMatrix')
@@ -466,12 +392,16 @@ function init () {
   gl.uniform3f(u_fatBorderColor, ...CONFIG.palette.fatBorderColor.map(a => a / 255))
   u_metaballsColor = gl.getUniformLocation(quadWebGLProgram, 'u_metaballsColor')
   gl.uniform3f(u_metaballsColor, ...CONFIG.palette.metaballsColor.map(a => a / 255))
+  u_grainSize = gl.getUniformLocation(quadWebGLProgram, 'u_grainSize')
+  gl.uniform1f(u_grainSize, CONFIG.grainSize)
+  u_grainBlendFactor = gl.getUniformLocation(quadWebGLProgram, 'u_grainBlendFactor')
+  gl.uniform1f(u_grainBlendFactor, CONFIG.grainBlendFactor)
+  u_resolution = gl.getUniformLocation(quadWebGLProgram, 'u_resolution')
+  gl.uniform2f(u_resolution, innerWidth, innerHeight)
+  u_time = gl.getUniformLocation(quadWebGLProgram, 'u_time')
+  gl.uniform1f(u_time, 0)
   gl.useProgram(null)
 
-  gl.useProgram(textQuadWebGLProgram)
-  u_projectionMatrix = gl.getUniformLocation(textQuadWebGLProgram, 'u_projectionMatrix')
-  gl.uniformMatrix4fv(u_projectionMatrix, false, projectionMatrix)
-  gl.useProgram(null)
 
   // gl.useProgram(lineWebGLProgram)
   // u_projectionMatrix = gl.getUniformLocation(lineWebGLProgram, 'u_projectionMatrix')
@@ -486,7 +416,9 @@ function init () {
   // gl.useProgram(null)
 
   gl.useProgram(textQuadWebGLProgram)
-  const u_resolution = gl.getUniformLocation(textQuadWebGLProgram, 'u_resolution')
+  u_projectionMatrix = gl.getUniformLocation(textQuadWebGLProgram, 'u_projectionMatrix')
+  gl.uniformMatrix4fv(u_projectionMatrix, false, projectionMatrix)
+  u_resolution = gl.getUniformLocation(textQuadWebGLProgram, 'u_resolution')
   gl.uniform2f(u_resolution, innerWidth, innerHeight)
   const u_textTexture = gl.getUniformLocation(textQuadWebGLProgram, 'u_textTexture')
   gl.uniform1i(u_textTexture, 0)
@@ -606,6 +538,7 @@ function renderFrame (ts) {
     gl.useProgram(quadWebGLProgram)
     gl.bindTexture(gl.TEXTURE_2D, targetTexture)
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true)
+    gl.uniform1f(u_time, CONFIG.animateGrain ? ts : 0)
     gl.drawArrays(gl.TRIANGLES, 0, 6)
     gl.useProgram(null)
     gl.bindVertexArray(null)
