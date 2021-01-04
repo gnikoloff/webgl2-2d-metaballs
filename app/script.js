@@ -1,4 +1,6 @@
 import WebFont from 'webfontloader'
+import throttle from 'lodash.throttle'
+import * as dat from 'dat.gui'
 
 import './style.css'
 
@@ -10,9 +12,11 @@ const CONFIG = {
   startVelocityX: { min: 0, max: 5 },
   startVelocityY: { min: 1, max: 3 },
   labelFontFamily: 'Josefin Sans',
-  labelFontWeight: 'bold',
+  labelFontWeight: 400,
   labelText: 'LOREM'
 }
+
+const gui = new dat.GUI()
 
 const contentWrapper = document.querySelector('.content')
 const canvas = document.createElement('canvas')
@@ -398,55 +402,14 @@ function init () {
   resize()
   window.addEventListener('resize', resize)
 
-  WebFont.load({
-    google: {
-      families: [`${CONFIG.labelFontFamily}:${CONFIG.labelFontWeight}`],
-      text: CONFIG.labelText,
-    },
-    fontactive: () => {
-      const {
-        texture,
-        width,
-        height,
-      } = makeTextTexture(CONFIG.labelText)
+  gui.add(CONFIG, 'labelFontFamily').onChange(throttle(e => {
+    loadFont().then(onFontLoaded)
+  }, 300))
+  gui.add(CONFIG, 'labelFontWeight').onChange(throttle(e => {
+    loadFont().then(onFontLoaded)
+  }, 300))
 
-      textTexture = texture
-      textTextureWidth = width
-      textTextureHeight = height
-
-      const vertexArray = new Float32Array([
-        -width / 2,  height / 2,
-         width / 2,  height / 2,
-         width / 2, -height / 2,
-        -width / 2,  height / 2,
-         width / 2, -height / 2,
-        -width / 2, -height / 2
-      ])
-      const uvsArray = makeQuadUVs()
-
-      const a_position = gl.getAttribLocation(textQuadWebGLProgram, 'a_position')
-      const a_uv = gl.getAttribLocation(textQuadWebGLProgram, 'a_uv')
-
-      const vertexBuffer = gl.createBuffer()
-      const uvsBuffer = gl.createBuffer()
-
-      gl.bindVertexArray(textQuadVertexArrayObject)
-
-      gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer)
-      gl.bufferData(gl.ARRAY_BUFFER, vertexArray, gl.STATIC_DRAW)
-      gl.enableVertexAttribArray(a_position)
-      gl.vertexAttribPointer(a_position, 2, gl.FLOAT, false, 0, 0)
-
-      gl.bindBuffer(gl.ARRAY_BUFFER, uvsBuffer)
-      gl.bufferData(gl.ARRAY_BUFFER, uvsArray, gl.STATIC_DRAW)
-      gl.enableVertexAttribArray(a_uv)
-      gl.vertexAttribPointer(a_uv, 2, gl.FLOAT, false, 0, 0)
-
-      gl.bindVertexArray(null)
-      fontLoaded = true
-    },
-    fontinactive: () => console.error(`Could not load ${CONFIG.labelFontFamily}`)
-  })
+  loadFont().then(onFontLoaded)
 
   gl.enable(gl.BLEND)
   gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
@@ -496,6 +459,49 @@ function init () {
   
 }
 
+function onFontLoaded () {
+  const {
+    texture,
+    width,
+    height,
+  } = makeTextTexture()
+
+  textTexture = texture
+  textTextureWidth = width
+  textTextureHeight = height
+
+  const vertexArray = new Float32Array([
+    -width / 2,  height / 2,
+      width / 2,  height / 2,
+      width / 2, -height / 2,
+    -width / 2,  height / 2,
+      width / 2, -height / 2,
+    -width / 2, -height / 2
+  ])
+  const uvsArray = makeQuadUVs()
+
+  const a_position = gl.getAttribLocation(textQuadWebGLProgram, 'a_position')
+  const a_uv = gl.getAttribLocation(textQuadWebGLProgram, 'a_uv')
+
+  const vertexBuffer = gl.createBuffer()
+  const uvsBuffer = gl.createBuffer()
+
+  gl.bindVertexArray(textQuadVertexArrayObject)
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer)
+  gl.bufferData(gl.ARRAY_BUFFER, vertexArray, gl.STATIC_DRAW)
+  gl.enableVertexAttribArray(a_position)
+  gl.vertexAttribPointer(a_position, 2, gl.FLOAT, false, 0, 0)
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, uvsBuffer)
+  gl.bufferData(gl.ARRAY_BUFFER, uvsArray, gl.STATIC_DRAW)
+  gl.enableVertexAttribArray(a_uv)
+  gl.vertexAttribPointer(a_uv, 2, gl.FLOAT, false, 0, 0)
+
+  gl.bindVertexArray(null)
+  fontLoaded = true
+}
+
 let a = true
 document.addEventListener('click', () => {
   a = !a
@@ -509,7 +515,6 @@ function renderFrame (ts) {
     ballsVelocitiesArray[i * 2 + 1] += CONFIG.gravity
     ballsOffsetsArray[i * 2 + 0] += ballsVelocitiesArray[i * 2 + 0]
     ballsOffsetsArray[i * 2 + 1] += ballsVelocitiesArray[i * 2 + 1]
-
 
     if (ballsOffsetsArray[i * 2 + 0] < 0) {
       ballsOffsetsArray[i * 2 + 0] = 0
@@ -702,8 +707,30 @@ function resize () {
   // gl.useProgram(null)
 }
 
+function loadFont ({
+  fontFamily = CONFIG.labelFontFamily,
+  fontWeight = CONFIG.labelFontWeight,
+  text = CONFIG.labelText,
+} = {}) {
+  return new Promise((resolve, reject) => {
+    WebFont.load({
+      google: {
+        families: [`${fontFamily}:${fontWeight}`],
+        text,
+      },
+      fontactive: () => resolve(),
+      fontinactive: (err) => {
+        console.error('could not load font:', err)
+        reject()
+      }
+    })
+  })
+}
+
 /* ------- WebGL helpers ------- */
-function makeTextTexture (text) {
+function makeTextTexture ({
+  text = CONFIG.labelText
+} = {}) {
   const canvas = document.createElement('canvas')
   const ctx = canvas.getContext('2d')
 
@@ -713,7 +740,7 @@ function makeTextTexture (text) {
   //   left: 12px;
   //   z-index: 9999;
   // `)
-  // document.body.appendChild(canvas)
+  document.body.appendChild(canvas)
 
   // debugger
 
@@ -721,11 +748,9 @@ function makeTextTexture (text) {
 
   const referenceFontSize = 42
 
-  ctx.font = `${referenceFontSize}px sans-serif`
+  ctx.font = `${CONFIG.labelFontWeight} ${referenceFontSize}px ${CONFIG.labelFontFamily}`
   let textMetrics = ctx.measureText(text)
-
-  console.log(textMetrics)
-  const widthDelta = canvas.width / (textMetrics.width - textMetrics.actualBoundingBoxLeft)
+  const widthDelta = CONFIG.textQuadWidth/ (textMetrics.width - textMetrics.actualBoundingBoxLeft)
   const realFontSize = referenceFontSize * widthDelta
 
   ctx.font = `${CONFIG.labelFontWeight} ${realFontSize}px ${CONFIG.labelFontFamily}`
@@ -734,7 +759,7 @@ function makeTextTexture (text) {
 
   canvas.height = textMetrics.actualBoundingBoxAscent - textMetrics.actualBoundingBoxDescent
 
-  ctx.fillStyle = 'white'
+  ctx.fillStyle = 'red'
   ctx.font = `${CONFIG.labelFontWeight} ${realFontSize}px ${CONFIG.labelFontFamily}`
   ctx.fillText(text, 0, canvas.height)
 
