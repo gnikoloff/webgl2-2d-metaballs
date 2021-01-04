@@ -13,7 +13,13 @@ const CONFIG = {
   startVelocityY: { min: 1, max: 3 },
   labelFontFamily: 'Josefin Sans',
   labelFontWeight: 400,
-  labelText: 'LOREM'
+  labelText: 'LOREM',
+  palette: {
+    backgroundColor: [44, 62, 80],
+    thinBorderColor: [230, 126, 34],
+    fatBorderColor: [44, 62, 80],
+    metaballsColor: [230, 126, 34],
+  }
 }
 
 const gui = new dat.GUI()
@@ -49,7 +55,11 @@ let textQuadWebGLProgram
 let quadWebGLProgram
 let ballsWebGLProgram
 
-let quadTextureUniformLoc
+let u_quadTextureUniformLoc
+let u_backgroundColor
+let u_thinBorderColor
+let u_fatBorderColor
+let u_metaballsColor
 // let lineAngleUniformLoc
 
 // let lineVertexArray
@@ -277,18 +287,14 @@ let ballsVelocitiesArray
       precision highp float;
 
       uniform sampler2D u_texture;
+      uniform vec3 u_backgroundColor;
+      uniform vec3 u_thinBorderColor;
+      uniform vec3 u_fatBorderColor;
+      uniform vec3 u_metaballsColor;
 
       in vec2 v_uv;
 
       out vec4 outputColor;
-
-      vec3 getNormalizedRGB (in float r, in float g, in float b) {
-        return vec3(
-          r / 255.0,
-          g / 255.0,
-          b / 255.0
-        );
-      }
 
       void main () {
         vec4 inputColor = texture(u_texture, v_uv);
@@ -299,8 +305,8 @@ let ballsVelocitiesArray
         float threshold = 0.005;
 
         outputColor = mix(
-          vec4(getNormalizedRGB(44.0, 62.0, 80.0), 1),
-          vec4(getNormalizedRGB(230.0, 126.0, 34.0), 1),
+          vec4(u_backgroundColor, 1),
+          vec4(u_thinBorderColor, 1),
           cutoff
         );
 
@@ -309,7 +315,7 @@ let ballsVelocitiesArray
         cutoff = step(cutoffThreshold, inputColor.a);
         outputColor = mix(
           outputColor,
-          vec4(getNormalizedRGB(44.0, 62.0, 80.0), 1.0),
+          vec4(u_fatBorderColor, 1.0),
           cutoff
         );
 
@@ -318,7 +324,7 @@ let ballsVelocitiesArray
         cutoff = step(cutoffThreshold, inputColor.a);
         outputColor = mix(
           outputColor,
-          vec4(getNormalizedRGB(243.0, 156.0, 18.0), 1.0),
+          vec4(u_metaballsColor, 1.0),
           cutoff
         );
 
@@ -402,14 +408,37 @@ function init () {
   resize()
   window.addEventListener('resize', resize)
 
+  gui.add(CONFIG, 'gravity').min(0.05).max(0.5).step(0.05)
+  gui.add(CONFIG, 'labelText').onChange(renderLabelQuad)
   gui.add(CONFIG, 'labelFontFamily').onChange(throttle(e => {
-    loadFont().then(onFontLoaded)
+    loadFont().then(renderLabelQuad)
   }, 300))
   gui.add(CONFIG, 'labelFontWeight').onChange(throttle(e => {
-    loadFont().then(onFontLoaded)
+    loadFont().then(renderLabelQuad)
   }, 300))
+  gui.addColor(CONFIG.palette, 'backgroundColor').onChange(val => {
+    gl.useProgram(quadWebGLProgram)
+    gl.uniform3f(u_backgroundColor, ...CONFIG.palette.backgroundColor.map(a => a / 255))
+    gl.useProgram(null)
+  })
+  gui.addColor(CONFIG.palette, 'thinBorderColor').onChange(val => {
+    gl.useProgram(quadWebGLProgram)
+    gl.uniform3f(u_thinBorderColor, ...CONFIG.palette.thinBorderColor.map(a => a / 255))
+    gl.useProgram(null)
+  })
+  gui.addColor(CONFIG.palette, 'fatBorderColor').onChange(val => {
+    gl.useProgram(quadWebGLProgram)
+    gl.uniform3f(u_fatBorderColor, ...CONFIG.palette.fatBorderColor.map(a => a / 255))
+    gl.useProgram(null)
+  })
+  gui.addColor(CONFIG.palette, 'metaballsColor').onChange(val => {
+    gl.useProgram(quadWebGLProgram)
+    gl.uniform3f(u_metaballsColor, ...CONFIG.palette.metaballsColor.map(a => a / 255))
+    gl.useProgram(null)
+  })
 
-  loadFont().then(onFontLoaded)
+  
+  loadFont().then(renderLabelQuad)
 
   gl.enable(gl.BLEND)
   gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
@@ -425,10 +454,18 @@ function init () {
   gl.useProgram(null)
 
   gl.useProgram(quadWebGLProgram)
-  quadTextureUniformLoc = gl.getUniformLocation(quadWebGLProgram, 'u_texture')
-  gl.uniform1i(quadTextureUniformLoc, 0)
+  u_quadTextureUniformLoc = gl.getUniformLocation(quadWebGLProgram, 'u_texture')
+  gl.uniform1i(u_quadTextureUniformLoc, 0)
   u_projectionMatrix = gl.getUniformLocation(quadWebGLProgram, 'u_projectionMatrix')
   gl.uniformMatrix4fv(u_projectionMatrix, false, projectionMatrix)
+  u_backgroundColor = gl.getUniformLocation(quadWebGLProgram, 'u_backgroundColor')
+  gl.uniform3f(u_backgroundColor, ...CONFIG.palette.backgroundColor.map(a => a / 255))
+  u_thinBorderColor = gl.getUniformLocation(quadWebGLProgram, 'u_thinBorderColor')
+  gl.uniform3f(u_thinBorderColor, ...CONFIG.palette.thinBorderColor.map(a => a / 255))
+  u_fatBorderColor = gl.getUniformLocation(quadWebGLProgram, 'u_fatBorderColor')
+  gl.uniform3f(u_fatBorderColor, ...CONFIG.palette.fatBorderColor.map(a => a / 255))
+  u_metaballsColor = gl.getUniformLocation(quadWebGLProgram, 'u_metaballsColor')
+  gl.uniform3f(u_metaballsColor, ...CONFIG.palette.metaballsColor.map(a => a / 255))
   gl.useProgram(null)
 
   gl.useProgram(textQuadWebGLProgram)
@@ -459,7 +496,7 @@ function init () {
   
 }
 
-function onFontLoaded () {
+function renderLabelQuad () {
   const {
     texture,
     width,
@@ -503,9 +540,9 @@ function onFontLoaded () {
 }
 
 let a = true
-document.addEventListener('click', () => {
-  a = !a
-})
+// document.addEventListener('click', () => {
+//   a = !a
+// })
 
 function renderFrame (ts) {
   const dt = ts - oldTime
@@ -536,7 +573,7 @@ function renderFrame (ts) {
       ballsOffsetsArray[i * 2 + 0] >= innerWidth / 2 - textTextureWidth / 2 &&
       ballsOffsetsArray[i * 2 + 0] <= innerWidth / 2 + textTextureWidth / 2
     ) {
-      ballsOffsetsArray[i * 2 + 1] = innerHeight / 2 - textTextureHeight / 2 - CONFIG.ballRadius / 3
+      ballsVelocitiesArray[i * 2 + 1] = Math.random() * CONFIG.startVelocityY.max + CONFIG.startVelocityY.min
       ballsVelocitiesArray[i * 2 + 1] *= -0.1
     }
 
@@ -716,7 +753,7 @@ function loadFont ({
     WebFont.load({
       google: {
         families: [`${fontFamily}:${fontWeight}`],
-        text,
+        // text: 'abcde',
       },
       fontactive: () => resolve(),
       fontinactive: (err) => {
@@ -759,7 +796,7 @@ function makeTextTexture ({
 
   canvas.height = textMetrics.actualBoundingBoxAscent - textMetrics.actualBoundingBoxDescent
 
-  ctx.fillStyle = 'red'
+  ctx.fillStyle = 'white'
   ctx.font = `${CONFIG.labelFontWeight} ${realFontSize}px ${CONFIG.labelFontFamily}`
   ctx.fillText(text, 0, canvas.height)
 
