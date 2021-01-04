@@ -699,7 +699,8 @@ function loadFont ({
 
 /* ------- WebGL helpers ------- */
 function makeTextTexture ({
-  text = CONFIG.labelText
+  text = CONFIG.labelText,
+  extraYPadding = 20
 } = {}) {
   const canvas = document.createElement('canvas')
   const ctx = canvas.getContext('2d')
@@ -710,7 +711,7 @@ function makeTextTexture ({
   //   left: 12px;
   //   z-index: 9999;
   // `)
-  document.body.appendChild(canvas)
+  // document.body.appendChild(canvas)
 
   // debugger
 
@@ -727,11 +728,11 @@ function makeTextTexture ({
 
   textMetrics = ctx.measureText(text)
 
-  canvas.height = textMetrics.actualBoundingBoxAscent - textMetrics.actualBoundingBoxDescent
+  canvas.height = textMetrics.actualBoundingBoxAscent - textMetrics.actualBoundingBoxDescent + extraYPadding
 
   ctx.fillStyle = 'white'
   ctx.font = `${CONFIG.labelFontWeight} ${realFontSize}px ${CONFIG.labelFontFamily}`
-  ctx.fillText(text, 0, canvas.height)
+  ctx.fillText(text, 0, canvas.height - extraYPadding / 2)
 
   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true)
 
