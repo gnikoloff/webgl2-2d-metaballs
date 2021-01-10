@@ -472,10 +472,10 @@ function renderLabelQuad () {
   fontLoaded = true
 }
 
-let a = true
-document.addEventListener('click', () => {
-  a = !a
-})
+// let a = true
+// document.addEventListener('click', () => {
+//   a = !a
+// })
 
 function renderFrame (ts) {
   const dt = ts - oldTime
