@@ -35,6 +35,7 @@ const CONFIG = {
 }
 
 const gui = new dat.GUI()
+gui.close()
 
 const contentWrapper = document.querySelector('.content')
 const canvas = document.createElement('canvas')
