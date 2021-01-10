@@ -472,9 +472,9 @@ function renderLabelQuad () {
 }
 
 let a = true
-// document.addEventListener('click', () => {
-//   a = !a
-// })
+document.addEventListener('click', () => {
+  a = !a
+})
 
 function renderFrame (ts) {
   const dt = ts - oldTime
@@ -521,7 +521,7 @@ function renderFrame (ts) {
   }
 
   gl.viewport(0, 0, canvas.width, canvas.height)
-  gl.clearColor(0.1, 0.1, 0.1, 0)
+  gl.clearColor(0, 0, 0, 0)
   gl.clear(gl.COLOR_BUFFER_BIT)
 
   gl.bindVertexArray(ballsVertexArrayObject)
