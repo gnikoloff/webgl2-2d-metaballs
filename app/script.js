@@ -15,7 +15,7 @@ import './style.css'
 
 const CONFIG = {
   ballsCount: 100,
-  ballRadius: isMobileBrowser() ? 75 : 250,
+  ballRadius: 250,
   gravity: 0.25,
   textQuadWidth: 400,
   startVelocityX: { min: 0, max: 5 },
@@ -44,7 +44,7 @@ const gl = canvas.getContext('webgl2')
 const dpr = devicePixelRatio > 2.5 ? 2.5 : devicePixelRatio
 
 if (!gl) {
-  showWebGL2NotSupported()
+  document.body.classList.add('webgl2-not-supported')
 }
 
 // const lineVertexArrayObject = gl.createVertexArray()
@@ -58,6 +58,7 @@ let textTexture
 let textTextureWidth
 let textTextureHeight
 
+let disabledDebug = true
 let oldTime = 0
 let fontLoaded = false
 // let lineAngle = 0
@@ -472,10 +473,6 @@ function renderLabelQuad () {
   fontLoaded = true
 }
 
-// let a = true
-// document.addEventListener('click', () => {
-//   a = !a
-// })
 
 function renderFrame (ts) {
   const dt = ts - oldTime
@@ -517,7 +514,7 @@ function renderFrame (ts) {
   gl.bindBuffer(gl.ARRAY_BUFFER, ballsOffsetsBuffer)
   gl.bufferData(gl.ARRAY_BUFFER, ballsOffsetsArray, gl.DYNAMIC_DRAW)
   
-  if (a) {
+  if (disabledDebug) {
     gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer)
   }
 
@@ -534,7 +531,7 @@ function renderFrame (ts) {
 
   gl.viewport(0, 0, canvas.width, canvas.height)
 
-  if (a) {
+  if (disabledDebug) {
     gl.bindVertexArray(quadVertexArrayObject)
     gl.useProgram(quadWebGLProgram)
     gl.bindTexture(gl.TEXTURE_2D, targetTexture)
@@ -791,36 +788,6 @@ function makeProjectionMatrix (width, height) {
     0, 0, 0, 0,
     -1, 1, 0, 1,
   ])
-}
-
-function showWebGL2NotSupported () {
-  const errorMessageWrapper = document.createElement('div')
-  if (isIOS()) {
-    const iOSVersion = getIOSVersion().major
-    if (iOSVersion === 13) {
-      errorMessageWrapper.innerHTML = `
-        <p>Please update your device to iOS / iPadOS 14 so you can see this demo.</p>
-      `
-    } else if (iOSVersion === 14) {
-      errorMessageWrapper.innerHTML = `
-        <p>In order to see WebGL2 content, you need to enable it from your device settings.</p>
-        <p>Settings > Safari > Advanced > Experimental Features > WebGL2.0</p>
-      `
-    }
-  } else {
-    errorMessageWrapper.innerHTML = `
-      <h1>Your browser does not support WebGL2</h1>
-      <p>Please try one of these alternative browsers:</p>
-      <ul>
-        <li>Microsoft Edge (version 79+)</li>
-        <li>Mozilla Firefox (version 51+)</li>
-        <li>Google Chrome (version 56+)</li>
-        <li>Opera (version 43+)</li>
-      </ul>
-    `
-  }
-  errorMessageWrapper.classList.add('webgl2-error')
-  contentWrapper.appendChild(errorMessageWrapper)
 }
 
 /* ------- Generic helpers ------- */
