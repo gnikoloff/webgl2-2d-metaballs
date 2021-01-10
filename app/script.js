@@ -336,12 +336,12 @@ function init () {
   })
   gui.add(CONFIG, 'animateGrain')
   gui.add(CONFIG, 'labelText').onChange(renderLabelQuad)
-  gui.add(CONFIG, 'labelFontFamily').onChange(throttle(e => {
-    loadFont().then(renderLabelQuad)
-  }, 300))
-  gui.add(CONFIG, 'labelFontWeight').onChange(throttle(e => {
-    loadFont().then(renderLabelQuad)
-  }, 300))
+  // gui.add(CONFIG, 'labelFontFamily').onChange(throttle(e => {
+  //   loadFont().then(renderLabelQuad)
+  // }, 300))
+  // gui.add(CONFIG, 'labelFontWeight').onChange(throttle(e => {
+  //   loadFont().then(renderLabelQuad)
+  // }, 300))
   gui.addColor(CONFIG.palette, 'backgroundColor').onChange(val => {
     gl.useProgram(quadWebGLProgram)
     gl.uniform3f(u_backgroundColor, ...CONFIG.palette.backgroundColor.map(a => a / 255))
