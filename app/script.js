@@ -16,7 +16,8 @@ import './style.css'
 const CONFIG = {
   ballsCount: 100,
   ballRadius: 250,
-  gravity: 0.25,
+  gravityX: 0.015,
+  gravityY: 0.25,
   textQuadWidth: 400,
   startVelocityX: { min: 0, max: 5 },
   startVelocityY: { min: 1, max: 3 },
@@ -202,7 +203,7 @@ let ballsVelocitiesArray
 
   for (let i = 0; i < CONFIG.ballsCount; i++) {
     ballsOffsetsArray[i * 2 + 0] = Math.random() * innerWidth
-    ballsOffsetsArray[i * 2 + 1] = Math.random() * innerHeight
+    ballsOffsetsArray[i * 2 + 1] = Math.random() * 100
 
     ballsVelocitiesArray[i * 2 + 0] = (Math.random() * 2 - 1) * CONFIG.startVelocityX.max + CONFIG.startVelocityX.min
     ballsVelocitiesArray[i * 2 + 1] = Math.random() * CONFIG.startVelocityY.max + CONFIG.startVelocityY.min
@@ -324,7 +325,7 @@ function init () {
   resize()
   window.addEventListener('resize', resize)
 
-  gui.add(CONFIG, 'gravity').min(0.05).max(0.5).step(0.05)
+  gui.add(CONFIG, 'gravityY').min(0.05).max(0.5).step(0.05)
   gui.add(CONFIG, 'grainSize').min(1).max(2).step(0.1).onChange(() => {
     gl.useProgram(quadWebGLProgram)
     gl.uniform1f(u_grainSize, CONFIG.grainSize)
@@ -364,6 +365,9 @@ function init () {
     gl.useProgram(null)
   })
 
+  setInterval(() => {
+    CONFIG.gravityX *= -1
+  }, 3000)
   
   loadFont().then(renderLabelQuad)
 
@@ -479,32 +483,67 @@ function renderFrame (ts) {
   oldTime = ts
 
   for (let i = 0; i < CONFIG.ballsCount; i++) {
-    ballsVelocitiesArray[i * 2 + 1] += CONFIG.gravity
+
+
+
+    ballsVelocitiesArray[i * 2 + 0] += CONFIG.gravityX
+    ballsVelocitiesArray[i * 2 + 1] += CONFIG.gravityY
+
     ballsOffsetsArray[i * 2 + 0] += ballsVelocitiesArray[i * 2 + 0]
     ballsOffsetsArray[i * 2 + 1] += ballsVelocitiesArray[i * 2 + 1]
+    
+    const radius = CONFIG.ballRadius / 20
+
+    // const quadTop = ballsOffsetsArray[i * 2 + 1] - radius / 2
+    // const quadRight = ballsOffsetsArray[i * 2 + 0] + radius / 2
+    // const quadBottom = ballsOffsetsArray[i * 2 + 1] + radius / 2
+    // const quadLeft = ballsOffsetsArray[i * 2 + 0] - radius / 2
+    
+    const centerBoxTop = innerHeight / 2 - textTextureHeight / 2
+    const centerBoxRight = innerWidth / 2 + textTextureWidth / 2
+    const centerBoxBottom = innerHeight / 2 + textTextureHeight / 2
+    const centerBoxLeft = innerWidth / 2 - textTextureWidth / 2
+
+    const quadx = ballsOffsetsArray[i * 2 + 0]
+    const quady = ballsOffsetsArray[i * 2 + 1]
+
+    const quadvx = ballsVelocitiesArray[i * 2 + 0]
+    const quadvy = ballsVelocitiesArray[i * 2 + 1]
+
+    if (
+      quadx + radius + quadvx > centerBoxLeft &&
+      quadx - radius + quadvx < centerBoxRight &&
+      quady + radius > centerBoxTop &&
+      quady - radius < centerBoxBottom
+    ) {
+      ballsVelocitiesArray[i * 2 + 0] *= -1
+    }
+
+    if (
+      quadx + radius > centerBoxLeft &&
+      quadx - radius < centerBoxRight &&
+      quady + radius + quadvy > centerBoxTop &&
+      quady - radius + quadvy < centerBoxBottom
+    ) {
+      ballsOffsetsArray[i * 2 + 1] = centerBoxTop - radius
+      ballsVelocitiesArray[i * 2 + 0] += (Math.random() * 2 - 1) * 3
+      ballsVelocitiesArray[i * 2 + 1] *= -0.9
+    }
+
+
 
     if (ballsOffsetsArray[i * 2 + 0] < 0) {
       ballsOffsetsArray[i * 2 + 0] = 0
-      ballsVelocitiesArray[i * 2 + 0] *= -1
+      ballsVelocitiesArray[i * 2 + 0] *= -0.75
     }
     if (ballsOffsetsArray[i * 2 + 0] > innerWidth) {
       ballsOffsetsArray[i * 2 + 0] = innerWidth
-      ballsVelocitiesArray[i * 2 + 0] *= -1
+      ballsVelocitiesArray[i * 2 + 0] *= -0.75
     }
 
     if (ballsOffsetsArray[i * 2 + 1] - CONFIG.ballRadius > innerHeight) {
       ballsOffsetsArray[i * 2 + 1] = -CONFIG.ballRadius
       ballsVelocitiesArray[i * 2 + 1] = 5 + Math.random() * 3
-    }
-
-    if (
-      ballsOffsetsArray[i * 2 + 1] + CONFIG.ballRadius / 3 > innerHeight / 2 - textTextureHeight / 2 &&
-      ballsOffsetsArray[i * 2 + 1] < innerHeight / 2 + textTextureHeight / 2 &&
-      ballsOffsetsArray[i * 2 + 0] >= innerWidth / 2 - textTextureWidth / 2 &&
-      ballsOffsetsArray[i * 2 + 0] <= innerWidth / 2 + textTextureWidth / 2
-    ) {
-      ballsVelocitiesArray[i * 2 + 1] = Math.random() * CONFIG.startVelocityY.max + CONFIG.startVelocityY.min
-      ballsVelocitiesArray[i * 2 + 1] *= -0.1
     }
 
   }
