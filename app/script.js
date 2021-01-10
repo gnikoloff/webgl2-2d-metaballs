@@ -16,21 +16,21 @@ import './style.css'
 const CONFIG = {
   ballsCount: 100,
   ballRadius: isMobileBrowser() ? 75 : 250,
-  gravity: 0.05,
+  gravity: 0.25,
   textQuadWidth: 400,
   startVelocityX: { min: 0, max: 5 },
   startVelocityY: { min: 1, max: 3 },
   labelFontFamily: 'Josefin Sans',
-  labelFontWeight: 400,
-  labelText: 'LOREM',
-  grainSize: 1,
-  grainBlendFactor: 0.1,
+  labelFontWeight: 600,
+  labelText: '2021',
+  grainSize: 1.1,
+  grainBlendFactor: 0.14,
   animateGrain: true,
   palette: {
-    backgroundColor: [44, 62, 80],
-    thinBorderColor: [230, 126, 34],
-    fatBorderColor: [44, 62, 80],
-    metaballsColor: [230, 126, 34],
+    backgroundColor: [36, 31, 31],
+    thinBorderColor: [0, 0, 0],
+    fatBorderColor: [41, 36, 36],
+    metaballsColor: [0, 0, 0],
   }
 }
 
