@@ -17,7 +17,7 @@ const CONFIG = {
   ballsCount: 100,
   ballRadius: 250,
   gravityX: 0.015,
-  gravityY: 0.25,
+  gravityY: 0.1,
   textQuadWidth: 400,
   startVelocityX: { min: 0, max: 5 },
   startVelocityY: { min: 1, max: 3 },
@@ -490,9 +490,8 @@ function renderFrame (ts) {
     ballsVelocitiesArray[i * 2 + 1] += CONFIG.gravityY
 
     ballsOffsetsArray[i * 2 + 0] += ballsVelocitiesArray[i * 2 + 0]
-    ballsOffsetsArray[i * 2 + 1] += ballsVelocitiesArray[i * 2 + 1]
     
-    const radius = CONFIG.ballRadius / 20
+    const radius = CONFIG.ballRadius / 5
 
     // const quadTop = ballsOffsetsArray[i * 2 + 1] - radius / 2
     // const quadRight = ballsOffsetsArray[i * 2 + 0] + radius / 2
@@ -525,11 +524,12 @@ function renderFrame (ts) {
       quady + radius + quadvy > centerBoxTop &&
       quady - radius + quadvy < centerBoxBottom
     ) {
-      ballsOffsetsArray[i * 2 + 1] = centerBoxTop - radius
-      ballsVelocitiesArray[i * 2 + 0] += (Math.random() * 2 - 1) * 3
-      ballsVelocitiesArray[i * 2 + 1] *= -0.9
+      ballsOffsetsArray[i * 2 + 1] = centerBoxTop - radius - quadvy
+      // ballsVelocitiesArray[i * 2 + 0] += (Math.random() * 2 - 1) * 3
+      ballsVelocitiesArray[i * 2 + 1] *= -0.2
+    } else {
+      ballsOffsetsArray[i * 2 + 1] += ballsVelocitiesArray[i * 2 + 1]
     }
-
 
 
     if (ballsOffsetsArray[i * 2 + 0] < 0) {
@@ -575,7 +575,7 @@ function renderFrame (ts) {
     gl.useProgram(quadWebGLProgram)
     gl.bindTexture(gl.TEXTURE_2D, targetTexture)
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true)
-    gl.uniform1f(u_time, CONFIG.animateGrain ? ts : 0)
+    gl.uniform1f(u_time, CONFIG.animateGrain ? ts * 0.1 : 0)
     gl.drawArrays(gl.TRIANGLES, 0, 6)
     gl.useProgram(null)
     gl.bindVertexArray(null)
