@@ -1,5 +1,5 @@
 import WebFont from 'webfontloader'
-import throttle from 'lodash.throttle'
+// import throttle from 'lodash.throttle'
 import * as dat from 'dat.gui'
 
 import quadVertexShaderSource from './quad.vert'
@@ -25,7 +25,7 @@ const CONFIG = {
   labelFontWeight: 600,
   labelText: '2021',
   grainSize: 1.1,
-  grainBlendFactor: 0.14,
+  grainBlendFactor: 0.04,
   animateGrain: true,
   palette: {
     backgroundColor: [36, 31, 31],
