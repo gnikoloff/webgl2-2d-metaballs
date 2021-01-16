@@ -237,6 +237,7 @@ init()
 function init () {
   canvas.id = 'metaballs-canvas'
   contentWrapper.appendChild(canvas)
+  // Handle resizing
   resize()
   window.addEventListener('resize', () => {
     resize()
@@ -258,34 +259,37 @@ function init () {
     gl.bufferData(gl.ARRAY_BUFFER, vertexArray, gl.STATIC_DRAW)
   })
 
-  gui.add(CONFIG, 'gravityY').min(0.05).max(0.5).step(0.05)
-  gui.add(CONFIG, 'grainBlendFactor').min(0).max(0.3).onChange(() => {
-    gl.useProgram(quadWebGLProgram)
-    gl.uniform1f(u_grainBlendFactor, CONFIG.grainBlendFactor)
-    gl.useProgram(null)
-  })
-  gui.add(CONFIG, 'animateGrain')
-  gui.add(CONFIG, 'labelText').onChange(renderLabelQuad)
-  gui.addColor(CONFIG.palette, 'backgroundColor').onChange(val => {
-    gl.useProgram(quadWebGLProgram)
-    gl.uniform3f(u_backgroundColor, ...CONFIG.palette.backgroundColor.map(a => a / 255))
-    gl.useProgram(null)
-  })
-  gui.addColor(CONFIG.palette, 'thinBorderColor').onChange(val => {
-    gl.useProgram(quadWebGLProgram)
-    gl.uniform3f(u_thinBorderColor, ...CONFIG.palette.thinBorderColor.map(a => a / 255))
-    gl.useProgram(null)
-  })
-  gui.addColor(CONFIG.palette, 'fatBorderColor').onChange(val => {
-    gl.useProgram(quadWebGLProgram)
-    gl.uniform3f(u_fatBorderColor, ...CONFIG.palette.fatBorderColor.map(a => a / 255))
-    gl.useProgram(null)
-  })
-  gui.addColor(CONFIG.palette, 'metaballsColor').onChange(val => {
-    gl.useProgram(quadWebGLProgram)
-    gl.uniform3f(u_metaballsColor, ...CONFIG.palette.metaballsColor.map(a => a / 255))
-    gl.useProgram(null)
-  })
+  // Handle dat.GUI settings changes
+  {
+    gui.add(CONFIG, 'gravityY').min(0.05).max(0.5).step(0.05)
+    gui.add(CONFIG, 'grainBlendFactor').min(0).max(0.3).onChange(() => {
+      gl.useProgram(quadWebGLProgram)
+      gl.uniform1f(u_grainBlendFactor, CONFIG.grainBlendFactor)
+      gl.useProgram(null)
+    })
+    gui.add(CONFIG, 'animateGrain')
+    gui.add(CONFIG, 'labelText').onChange(renderLabelQuad)
+    gui.addColor(CONFIG.palette, 'backgroundColor').onChange(val => {
+      gl.useProgram(quadWebGLProgram)
+      gl.uniform3f(u_backgroundColor, ...CONFIG.palette.backgroundColor.map(a => a / 255))
+      gl.useProgram(null)
+    })
+    gui.addColor(CONFIG.palette, 'thinBorderColor').onChange(val => {
+      gl.useProgram(quadWebGLProgram)
+      gl.uniform3f(u_thinBorderColor, ...CONFIG.palette.thinBorderColor.map(a => a / 255))
+      gl.useProgram(null)
+    })
+    gui.addColor(CONFIG.palette, 'fatBorderColor').onChange(val => {
+      gl.useProgram(quadWebGLProgram)
+      gl.uniform3f(u_fatBorderColor, ...CONFIG.palette.fatBorderColor.map(a => a / 255))
+      gl.useProgram(null)
+    })
+    gui.addColor(CONFIG.palette, 'metaballsColor').onChange(val => {
+      gl.useProgram(quadWebGLProgram)
+      gl.uniform3f(u_metaballsColor, ...CONFIG.palette.metaballsColor.map(a => a / 255))
+      gl.useProgram(null)
+    })
+  }
 
   setInterval(() => {
     CONFIG.gravityX *= -1
@@ -295,23 +299,12 @@ function init () {
 
   gl.enable(gl.BLEND)
   gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
-  // gl.blendEquation(gl.FUNC_SUBTRACT)
 
-  const projectionMatrix = makeProjectionMatrix(innerWidth / 2, innerHeight / 2)
-
-  let u_projectionMatrix
+  // Initialize correct uniforms
   let u_resolution
-
-  gl.useProgram(ballsWebGLProgram)
-  u_projectionMatrix = gl.getUniformLocation(ballsWebGLProgram, 'u_projectionMatrix')
-  gl.uniformMatrix4fv(u_projectionMatrix, false, projectionMatrix)
-  gl.useProgram(null)
-
   gl.useProgram(quadWebGLProgram)
   u_quadTextureUniformLoc = gl.getUniformLocation(quadWebGLProgram, 'u_texture')
   gl.uniform1i(u_quadTextureUniformLoc, 0)
-  u_projectionMatrix = gl.getUniformLocation(quadWebGLProgram, 'u_projectionMatrix')
-  gl.uniformMatrix4fv(u_projectionMatrix, false, projectionMatrix)
   u_backgroundColor = gl.getUniformLocation(quadWebGLProgram, 'u_backgroundColor')
   gl.uniform3f(u_backgroundColor, ...CONFIG.palette.backgroundColor.map(a => a / 255))
   u_thinBorderColor = gl.getUniformLocation(quadWebGLProgram, 'u_thinBorderColor')
@@ -329,14 +322,13 @@ function init () {
   gl.useProgram(null)
 
   gl.useProgram(textQuadWebGLProgram)
-  u_projectionMatrix = gl.getUniformLocation(textQuadWebGLProgram, 'u_projectionMatrix')
-  gl.uniformMatrix4fv(u_projectionMatrix, false, projectionMatrix)
   u_resolution = gl.getUniformLocation(textQuadWebGLProgram, 'u_resolution')
   gl.uniform2f(u_resolution, innerWidth, innerHeight)
   const u_textTexture = gl.getUniformLocation(textQuadWebGLProgram, 'u_textTexture')
   gl.uniform1i(u_textTexture, 0)
   gl.useProgram(null)
 
+  // Issue next frame update and render
   requestAnimationFrame(renderFrame)
   
 }
@@ -354,10 +346,10 @@ function renderLabelQuad () {
 
   const vertexArray = new Float32Array([
     -width / 2,  height / 2,
-      width / 2,  height / 2,
-      width / 2, -height / 2,
+     width / 2,  height / 2,
+     width / 2, -height / 2,
     -width / 2,  height / 2,
-      width / 2, -height / 2,
+     width / 2, -height / 2,
     -width / 2, -height / 2
   ])
   const uvsArray = makeQuadUVs()
@@ -392,8 +384,7 @@ function renderFrame (ts) {
   for (let i = 0; i < CONFIG.ballsCount; i++) {
     ballsVelocitiesArray[i * 2 + 0] += CONFIG.gravityX
     ballsVelocitiesArray[i * 2 + 1] += CONFIG.gravityY
-
-    ballsOffsetsArray[i * 2 + 0] += ballsVelocitiesArray[i * 2 + 0]
+    ballsOffsetsArray[i * 2 + 0] += ballsVelocitiesArray[i * 2 + 0] * (dt * 0.075)
     
     const radius = CONFIG.ballRadius / 5
     
@@ -408,6 +399,7 @@ function renderFrame (ts) {
     const quadvx = ballsVelocitiesArray[i * 2 + 0]
     const quadvy = ballsVelocitiesArray[i * 2 + 1]
 
+    // Handle text box collisions
     if (
       quadx + radius + quadvx > centerBoxLeft &&
       quadx - radius + quadvx < centerBoxRight &&
@@ -416,7 +408,6 @@ function renderFrame (ts) {
     ) {
       ballsVelocitiesArray[i * 2 + 0] *= -1
     }
-
     if (
       quadx + radius > centerBoxLeft &&
       quadx - radius < centerBoxRight &&
@@ -426,10 +417,10 @@ function renderFrame (ts) {
       ballsOffsetsArray[i * 2 + 1] = centerBoxTop - radius - quadvy
       ballsVelocitiesArray[i * 2 + 1] *= -0.2
     } else {
-      ballsOffsetsArray[i * 2 + 1] += ballsVelocitiesArray[i * 2 + 1]
+      ballsOffsetsArray[i * 2 + 1] += ballsVelocitiesArray[i * 2 + 1] * (dt * 0.06)
     }
 
-
+    // Bounce off left & right viewport edge
     if (ballsOffsetsArray[i * 2 + 0] < 0) {
       ballsOffsetsArray[i * 2 + 0] = 0
       ballsVelocitiesArray[i * 2 + 0] *= -0.75
@@ -439,6 +430,7 @@ function renderFrame (ts) {
       ballsVelocitiesArray[i * 2 + 0] *= -0.75
     }
 
+    // Regenerate balls when they fall below bottom viewport edge
     if (ballsOffsetsArray[i * 2 + 1] - CONFIG.ballRadius > innerHeight) {
       ballsOffsetsArray[i * 2 + 1] = -CONFIG.ballRadius
       ballsVelocitiesArray[i * 2 + 1] = 5 + Math.random() * 3
@@ -446,6 +438,7 @@ function renderFrame (ts) {
 
   }
 
+  // Pass updated positions to our balls
   gl.bindBuffer(gl.ARRAY_BUFFER, ballsOffsetsBuffer)
   gl.bufferData(gl.ARRAY_BUFFER, ballsOffsetsArray, gl.DYNAMIC_DRAW)
   
@@ -453,19 +446,21 @@ function renderFrame (ts) {
     gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer)
   }
 
+  // Set correct canvas viewport and color
   gl.viewport(0, 0, canvas.width, canvas.height)
   gl.clearColor(0, 0, 0, 0)
   gl.clear(gl.COLOR_BUFFER_BIT)
 
+  // Render balls
   gl.bindVertexArray(ballsVertexArrayObject)
   gl.useProgram(ballsWebGLProgram)
   gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, CONFIG.ballsCount)
   gl.bindVertexArray(null)
 
   gl.bindFramebuffer(gl.FRAMEBUFFER, null)
-
   gl.viewport(0, 0, canvas.width, canvas.height)
 
+  // Render fullscreen postprocessing quad
   if (disabledDebug) {
     gl.bindVertexArray(quadVertexArrayObject)
     gl.useProgram(quadWebGLProgram)
@@ -478,7 +473,7 @@ function renderFrame (ts) {
     gl.bindTexture(gl.TEXTURE_2D, null)
   }
 
-  // render quad
+  // Render text quad
   if (fontLoaded) {
     gl.useProgram(textQuadWebGLProgram)
     gl.bindVertexArray(textQuadVertexArrayObject)
@@ -500,8 +495,8 @@ function resize () {
 
   const projectionMatrix = makeProjectionMatrix(innerWidth / 2, innerHeight / 2)
 
+  // Update and pass correct projectionMatrix
   let u_projectionMatrix
-
   gl.useProgram(ballsWebGLProgram)
   u_projectionMatrix = gl.getUniformLocation(ballsWebGLProgram, 'u_projectionMatrix')
   gl.uniformMatrix4fv(u_projectionMatrix, false, projectionMatrix)
