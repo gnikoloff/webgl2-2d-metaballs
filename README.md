@@ -35,7 +35,7 @@ npm run build
 
 ## Misc
 
-Follow Georgi: [Twitter](https://twitter.com/georgiNikoloff), [Codepen](Codepen), [GitHub](https://github.com/gnikoloff) 
+Follow Georgi: [Twitter](https://twitter.com/georgiNikoloff), [Codepen](https://codepen.io/gbnikolov), [GitHub](https://github.com/gnikoloff) 
 
 Follow Codrops: [Twitter](http://www.twitter.com/codrops), [Facebook](http://www.facebook.com/codrops), [GitHub](https://github.com/codrops), [Instagram](https://www.instagram.com/codropsss/)
 
