@@ -14,12 +14,11 @@ const CONFIG = {
   isDebug: false,
 }
 
+const dpr = devicePixelRatio > 2.5 ? 2.5 : devicePixelRatio
 const contentWrapper = document.querySelector('.content')
 const canvas = document.createElement('canvas')
 const gl = canvas.getContext('webgl2')
 const mousePos = { x: innerWidth / 2, y: innerHeight / 2 }
-const dpr = devicePixelRatio > 2.5 ? 2.5 : devicePixelRatio
-
 const quadVertexArrayObject = gl.createVertexArray()
 const ballsVertexArrayObject = gl.createVertexArray()
 const ballsOffsetsBuffer = gl.createBuffer()
@@ -190,7 +189,26 @@ function init () {
   contentWrapper.appendChild(canvas)
   resize()
   setTimeout(() => { canvasbbox = canvas.getBoundingClientRect() }, 0)
-  window.addEventListener('resize', resize)
+  window.addEventListener('resize', () => {
+    resize()
+
+    // Recreate framebuffer
+    gl.deleteFramebuffer(framebuffer)
+    gl.deleteTexture(targetTexture)
+    makeFramebuffer()
+
+    // Update vertices of our fullscreen quad to match new viewport
+    const vertexArray = new Float32Array([
+      0, innerHeight / 2,
+      innerWidth / 2, innerHeight / 2,
+      innerWidth / 2, 0,
+      0, innerHeight / 2,
+      innerWidth / 2, 0,
+      0, 0
+    ])
+    gl.bindBuffer(gl.ARRAY_BUFFER, quadVertexBuffer)
+    gl.bufferData(gl.ARRAY_BUFFER, vertexArray, gl.STATIC_DRAW)
+  })
   canvas.addEventListener('mousemove', onMouseMove)
   canvas.addEventListener('click', onMouseClick)
 
@@ -326,23 +344,6 @@ function resize () {
   u_projectionMatrix = gl.getUniformLocation(quadWebGLProgram, 'u_projectionMatrix')
   gl.uniformMatrix4fv(u_projectionMatrix, false, projectionMatrix)
   gl.useProgram(null)
-
-  // Recreate framebuffer
-  gl.deleteFramebuffer(framebuffer)
-  gl.deleteTexture(targetTexture)
-  makeFramebuffer()
-
-  // Update vertices of our fullscreen quad to match new viewport
-  const vertexArray = new Float32Array([
-    0, innerHeight / 2,
-    innerWidth / 2, innerHeight / 2,
-    innerWidth / 2, 0,
-    0, innerHeight / 2,
-    innerWidth / 2, 0,
-    0, 0
-  ])
-  gl.bindBuffer(gl.ARRAY_BUFFER, quadVertexBuffer)
-  gl.bufferData(gl.ARRAY_BUFFER, vertexArray, gl.STATIC_DRAW)
 
 }
 
