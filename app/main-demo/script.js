@@ -24,7 +24,6 @@ const CONFIG = {
   labelFontFamily: 'Josefin Sans',
   labelFontWeight: 600,
   labelText: '2021',
-  grainSize: 1.1,
   grainBlendFactor: 0.04,
   animateGrain: true,
   palette: {
@@ -67,7 +66,6 @@ let u_backgroundColor
 let u_thinBorderColor
 let u_fatBorderColor
 let u_metaballsColor
-let u_grainSize
 let u_grainBlendFactor
 let u_time
 let ballsOffsetsArray
@@ -266,11 +264,6 @@ function init () {
   })
 
   gui.add(CONFIG, 'gravityY').min(0.05).max(0.5).step(0.05)
-  gui.add(CONFIG, 'grainSize').min(1).max(2).step(0.1).onChange(() => {
-    gl.useProgram(quadWebGLProgram)
-    gl.uniform1f(u_grainSize, CONFIG.grainSize)
-    gl.useProgram(null)
-  })
   gui.add(CONFIG, 'grainBlendFactor').min(0).max(0.3).onChange(() => {
     gl.useProgram(quadWebGLProgram)
     gl.uniform1f(u_grainBlendFactor, CONFIG.grainBlendFactor)
@@ -338,8 +331,6 @@ function init () {
   gl.uniform3f(u_fatBorderColor, ...CONFIG.palette.fatBorderColor.map(a => a / 255))
   u_metaballsColor = gl.getUniformLocation(quadWebGLProgram, 'u_metaballsColor')
   gl.uniform3f(u_metaballsColor, ...CONFIG.palette.metaballsColor.map(a => a / 255))
-  u_grainSize = gl.getUniformLocation(quadWebGLProgram, 'u_grainSize')
-  gl.uniform1f(u_grainSize, CONFIG.grainSize)
   u_grainBlendFactor = gl.getUniformLocation(quadWebGLProgram, 'u_grainBlendFactor')
   gl.uniform1f(u_grainBlendFactor, CONFIG.grainBlendFactor)
   u_resolution = gl.getUniformLocation(quadWebGLProgram, 'u_resolution')
