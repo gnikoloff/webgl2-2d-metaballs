@@ -1,13 +1,10 @@
 import WebFont from 'webfontloader'
-// import throttle from 'lodash.throttle'
 import * as dat from 'dat.gui'
 
 import quadVertexShaderSource from './quad.vert'
 import quadFragmentShaderSource from './quad.frag'
-
 import ballsVertexShaderSource from './balls.vert'
 import ballsFragmentShaderSource from './balls.frag'
-
 import textVertexShaderSource from './text.vert'
 import textFragmentShaderSource from './text.frag'
 
@@ -50,8 +47,6 @@ if (!gl) {
   document.body.classList.add('webgl2-not-supported')
 }
 
-let oldWidth = innerWidth
-let oldHeight = innerHeight
 let textTexture
 let textTextureWidth
 let textTextureHeight
@@ -271,12 +266,6 @@ function init () {
   })
   gui.add(CONFIG, 'animateGrain')
   gui.add(CONFIG, 'labelText').onChange(renderLabelQuad)
-  // gui.add(CONFIG, 'labelFontFamily').onChange(throttle(e => {
-  //   loadFont().then(renderLabelQuad)
-  // }, 300))
-  // gui.add(CONFIG, 'labelFontWeight').onChange(throttle(e => {
-  //   loadFont().then(renderLabelQuad)
-  // }, 300))
   gui.addColor(CONFIG.palette, 'backgroundColor').onChange(val => {
     gl.useProgram(quadWebGLProgram)
     gl.uniform3f(u_backgroundColor, ...CONFIG.palette.backgroundColor.map(a => a / 255))
@@ -338,19 +327,6 @@ function init () {
   u_time = gl.getUniformLocation(quadWebGLProgram, 'u_time')
   gl.uniform1f(u_time, 0)
   gl.useProgram(null)
-
-
-  // gl.useProgram(lineWebGLProgram)
-  // u_projectionMatrix = gl.getUniformLocation(lineWebGLProgram, 'u_projectionMatrix')
-  // gl.uniformMatrix4fv(u_projectionMatrix, false, projectionMatrix)
-
-  // const u_resolution = gl.getUniformLocation(lineWebGLProgram, 'u_resolution')
-  // gl.uniform2f(u_resolution, innerWidth, innerHeight)
-
-  // lineAngleUniformLoc = gl.getUniformLocation(lineWebGLProgram, 'u_angle')
-  // gl.uniform1f(lineAngleUniformLoc, lineAngle * Math.PI / 180)
-
-  // gl.useProgram(null)
 
   gl.useProgram(textQuadWebGLProgram)
   u_projectionMatrix = gl.getUniformLocation(textQuadWebGLProgram, 'u_projectionMatrix')
@@ -414,20 +390,12 @@ function renderFrame (ts) {
   oldTime = ts
 
   for (let i = 0; i < CONFIG.ballsCount; i++) {
-
-
-
     ballsVelocitiesArray[i * 2 + 0] += CONFIG.gravityX
     ballsVelocitiesArray[i * 2 + 1] += CONFIG.gravityY
 
     ballsOffsetsArray[i * 2 + 0] += ballsVelocitiesArray[i * 2 + 0]
     
     const radius = CONFIG.ballRadius / 5
-
-    // const quadTop = ballsOffsetsArray[i * 2 + 1] - radius / 2
-    // const quadRight = ballsOffsetsArray[i * 2 + 0] + radius / 2
-    // const quadBottom = ballsOffsetsArray[i * 2 + 1] + radius / 2
-    // const quadLeft = ballsOffsetsArray[i * 2 + 0] - radius / 2
     
     const centerBoxTop = innerHeight / 2 - textTextureHeight / 2
     const centerBoxRight = innerWidth / 2 + textTextureWidth / 2
@@ -456,7 +424,6 @@ function renderFrame (ts) {
       quady - radius + quadvy < centerBoxBottom
     ) {
       ballsOffsetsArray[i * 2 + 1] = centerBoxTop - radius - quadvy
-      // ballsVelocitiesArray[i * 2 + 0] += (Math.random() * 2 - 1) * 3
       ballsVelocitiesArray[i * 2 + 1] *= -0.2
     } else {
       ballsOffsetsArray[i * 2 + 1] += ballsVelocitiesArray[i * 2 + 1]
@@ -478,8 +445,6 @@ function renderFrame (ts) {
     }
 
   }
-
-  // checkLine()
 
   gl.bindBuffer(gl.ARRAY_BUFFER, ballsOffsetsBuffer)
   gl.bufferData(gl.ARRAY_BUFFER, ballsOffsetsArray, gl.DYNAMIC_DRAW)
@@ -513,15 +478,6 @@ function renderFrame (ts) {
     gl.bindTexture(gl.TEXTURE_2D, null)
   }
 
-  // lineAngle = Math.sin(ts * 0.001) * 30
-
-  // gl.bindVertexArray(lineVertexArrayObject)
-  // gl.useProgram(lineWebGLProgram)
-  // gl.uniform1f(lineAngleUniformLoc, -lineAngle * Math.PI / 180)
-  // gl.drawArrays(gl.LINES, 0, 2)
-  // gl.useProgram(null)
-  // gl.bindVertexArray(null)
-
   // render quad
   if (fontLoaded) {
     gl.useProgram(textQuadWebGLProgram)
@@ -534,85 +490,6 @@ function renderFrame (ts) {
   }
 
   requestAnimationFrame(renderFrame)
-}
-
-function getLineBounds () {
-  const x1 = lineVertexArray[0]
-  const y1 = lineVertexArray[1]
-  const x2 = lineVertexArray[2]
-  const y2 = lineVertexArray[3]
-  if (lineAngle === 0) {
-    const minX = Math.min(x1, x2)
-    const minY = Math.min(y1, y2)
-    const maxX = Math.max(x1, x2)
-    const maxY = Math.max(y1, y2)
-    return {
-      x: innerWidth / 2 + x1 + minX + CONFIG.lineWidth / 2,
-      y: innerHeight / 2 + y1 + minY + CONFIG.lineWidth / 2,
-      width: maxX - minX,
-      height: maxY - minY,
-    }
-  } else {
-    const rotation = lineAngle * Math.PI / 180
-    const sin = Math.sin(rotation)
-    const cos = Math.cos(rotation)
-    const x1r = cos * x1 + sin * y1
-    const x2r = cos * x2 + sin * y2
-    const y1r = cos * y1 + sin * x1
-    const y2r = cos * y2 + sin * x2
-    const x = innerWidth / 2 + x1 + Math.min(x1r, x2r) + CONFIG.lineWidth / 2
-    const y = innerHeight / 2 + y1 + Math.min(y1r, y2r) + CONFIG.lineWidth / 2
-    const width = Math.max(x1r, x2r) - Math.min(x1r, x2r)
-    const height = Math.max(y1r, y2r) - Math.min(y1r, y2r)
-    return {
-      x,
-      y,
-      width,
-      height,
-    }
-  }
-}
-
-function checkLine () {
-  const lineBounds = getLineBounds()
-  const ballRadius = CONFIG.ballRadius / 7
-
-  for (let i = 0; i < CONFIG.ballsCount; i++) {
-    const ballx = ballsOffsetsArray[i * 2 + 0]
-    const bally = ballsOffsetsArray[i * 2 + 1]
-    const ballvx = ballsVelocitiesArray[i * 2 + 0]
-    const ballvy = ballsVelocitiesArray[i * 2 + 1]
-    if (ballx + ballRadius / 2 > lineBounds.x && ballx - ballRadius / 2 < lineBounds.x + lineBounds.width) {
-    
-      const lineRotation = lineAngle * Math.PI / 180
-      const cos = Math.cos(lineRotation)
-      const sin = Math.sin(lineRotation)
-
-      let x = ballx - innerWidth / 2 
-      let y = bally - innerHeight / 2
-      let vx1 = cos * ballvx + sin * ballvy
-      let vy1 = cos * ballvy - sin * ballvx
-
-      let y1 = cos * y - sin * x
-
-      if (y1 > -ballRadius / 2 && y1 < vy1) {
-        // debugger
-        const x2 = cos * x + sin * y
-
-        y1 = -ballRadius / 2
-        vy1 *= -0.45
-
-        x = cos * x2 - sin * y1
-        y = cos * y1 + sin * x2
-
-        ballsVelocitiesArray[i * 2 + 0] = cos * vx1 - sin * vy1
-        ballsVelocitiesArray[i * 2 + 1] = cos * vy1 + sin * vx1
-
-        ballsOffsetsArray[i * 2 + 0] = innerWidth / 2 + x
-        ballsOffsetsArray[i * 2 + 1] = innerHeight / 2 + y
-      }
-    }
-  }
 }
 
 function resize () {
@@ -762,36 +639,4 @@ function makeProjectionMatrix (width, height) {
     0, 0, 0, 0,
     -1, 1, 0, 1,
   ])
-}
-
-/* ------- Generic helpers ------- */
-function isMobileBrowser () {
-  return (function (a) {
-    if (/(android|bb\d+|meego).+mobile|avantgo|bada\/|blackberry|blazer|compal|elaine|fennec|hiptop|iemobile|ip(hone|od)|iris|kindle|lge |maemo|midp|mmp|mobile.+firefox|netfront|opera m(ob|in)i|palm( os)?|phone|p(ixi|re)\/|plucker|pocket|psp|series(4|6)0|symbian|treo|up\.(browser|link)|vodafone|wap|windows ce|xda|xiino|android|ipad|playbook|silk/i.test(a) || /1207|6310|6590|3gso|4thp|50[1-6]i|770s|802s|a wa|abac|ac(er|oo|s\-)|ai(ko|rn)|al(av|ca|co)|amoi|an(ex|ny|yw)|aptu|ar(ch|go)|as(te|us)|attw|au(di|\-m|r |s )|avan|be(ck|ll|nq)|bi(lb|rd)|bl(ac|az)|br(e|v)w|bumb|bw\-(n|u)|c55\/|capi|ccwa|cdm\-|cell|chtm|cldc|cmd\-|co(mp|nd)|craw|da(it|ll|ng)|dbte|dc\-s|devi|dica|dmob|do(c|p)o|ds(12|\-d)|el(49|ai)|em(l2|ul)|er(ic|k0)|esl8|ez([4-7]0|os|wa|ze)|fetc|fly(\-|_)|g1 u|g560|gene|gf\-5|g\-mo|go(\.w|od)|gr(ad|un)|haie|hcit|hd\-(m|p|t)|hei\-|hi(pt|ta)|hp( i|ip)|hs\-c|ht(c(\-| |_|a|g|p|s|t)|tp)|hu(aw|tc)|i\-(20|go|ma)|i230|iac( |\-|\/)|ibro|idea|ig01|ikom|im1k|inno|ipaq|iris|ja(t|v)a|jbro|jemu|jigs|kddi|keji|kgt( |\/)|klon|kpt |kwc\-|kyo(c|k)|le(no|xi)|lg( g|\/(k|l|u)|50|54|\-[a-w])|libw|lynx|m1\-w|m3ga|m50\/|ma(te|ui|xo)|mc(01|21|ca)|m\-cr|me(rc|ri)|mi(o8|oa|ts)|mmef|mo(01|02|bi|de|do|t(\-| |o|v)|zz)|mt(50|p1|v )|mwbp|mywa|n10[0-2]|n20[2-3]|n30(0|2)|n50(0|2|5)|n7(0(0|1)|10)|ne((c|m)\-|on|tf|wf|wg|wt)|nok(6|i)|nzph|o2im|op(ti|wv)|oran|owg1|p800|pan(a|d|t)|pdxg|pg(13|\-([1-8]|c))|phil|pire|pl(ay|uc)|pn\-2|po(ck|rt|se)|prox|psio|pt\-g|qa\-a|qc(07|12|21|32|60|\-[2-7]|i\-)|qtek|r380|r600|raks|rim9|ro(ve|zo)|s55\/|sa(ge|ma|mm|ms|ny|va)|sc(01|h\-|oo|p\-)|sdk\/|se(c(\-|0|1)|47|mc|nd|ri)|sgh\-|shar|sie(\-|m)|sk\-0|sl(45|id)|sm(al|ar|b3|it|t5)|so(ft|ny)|sp(01|h\-|v\-|v )|sy(01|mb)|t2(18|50)|t6(00|10|18)|ta(gt|lk)|tcl\-|tdg\-|tel(i|m)|tim\-|t\-mo|to(pl|sh)|ts(70|m\-|m3|m5)|tx\-9|up(\.b|g1|si)|utst|v400|v750|veri|vi(rg|te)|vk(40|5[0-3]|\-v)|vm40|voda|vulc|vx(52|53|60|61|70|80|81|83|85|98)|w3c(\-| )|webc|whit|wi(g |nc|nw)|wmlb|wonu|x700|yas\-|your|zeto|zte\-/i.test(a.substr(0, 4))) {
-      return true
-    }
-    return false
-  })(navigator.userAgent || navigator.vendor || window.opera)
-}
-
-function isIOS () {
-  return (/AppleWebKit/.test(navigator.userAgent) && /Mobile\/\w+/.test(navigator.userAgent)) || isIPadOS()
-}
-
-function isIPadOS () {
-  return navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1 && !window.MSStream
-}
-
-function getIOSVersion () {
-  const found = navigator.userAgent.match(/(iPhone|iPad); (CPU iPhone|CPU) OS (\d+)_(\d+)(_(\d+))?\s+/)
-  if (!found || found.length < 4) {
-    return {
-      major: 0,
-      minor: 0
-    }
-  }
-  return {
-    major: parseInt(found[3], 10),
-    minor: parseInt(found[4], 10)
-  }
 }
