@@ -28,6 +28,8 @@ const ballsOffsetsBuffer = gl.createBuffer()
 let oldTime = 0
 let lineAngle = 0
 
+let canvasbbox
+
 // WebGL Programs
 let lineWebGLProgram
 let quadWebGLProgram
@@ -327,6 +329,9 @@ function init () {
   resize()
   window.addEventListener('resize', resize)
 
+  setTimeout(() => {
+    canvasbbox = canvas.getBoundingClientRect()
+  }, 0)
 
   gl.enable(gl.BLEND)
   gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
@@ -364,14 +369,14 @@ function init () {
 
   document.body.addEventListener('mousemove', e => {
     if (e.pageX) {
-      mousePos.x = e.pageX
+      mousePos.x = e.pageX - canvasbbox.left
     } else {
-      mousePos.x = e.changedTouches[0].pageX
+      mousePos.x = e.changedTouches[0].pageX - canvasbbox.left
     }
     if (e.pageY) {
-      mousePos.y = e.pageY
+      mousePos.y = e.pageY - canvasbbox.top
     } else {
-      mousePos.y = e.changedTouches[0].pageY
+      mousePos.y = e.changedTouches[0].pageY - canvasbbox.top
     }
   })
   
@@ -539,6 +544,7 @@ function checkLine () {
 }
 
 function resize () {
+  canvasbbox = canvas.getBoundingClientRect()
   canvas.width = innerWidth * dpr
   canvas.height = innerHeight * dpr
   canvas.style.width = `${innerWidth}px`
