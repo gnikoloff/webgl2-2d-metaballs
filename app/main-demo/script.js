@@ -38,38 +38,30 @@ const CONFIG = {
 const gui = new dat.GUI()
 gui.close()
 
+const dpr = devicePixelRatio > 2.5 ? 2.5 : devicePixelRatio
 const contentWrapper = document.querySelector('.content')
 const canvas = document.createElement('canvas')
 const gl = canvas.getContext('webgl2')
-
-const dpr = devicePixelRatio > 2.5 ? 2.5 : devicePixelRatio
+const textQuadVertexArrayObject = gl.createVertexArray()
+const quadVertexArrayObject = gl.createVertexArray()
+const ballsVertexArrayObject = gl.createVertexArray()
+const ballsOffsetsBuffer = gl.createBuffer()
 
 if (!gl) {
   document.body.classList.add('webgl2-not-supported')
 }
 
-// const lineVertexArrayObject = gl.createVertexArray()
-const textQuadVertexArrayObject = gl.createVertexArray()
-const quadVertexArrayObject = gl.createVertexArray()
-const ballsVertexArrayObject = gl.createVertexArray()
-
-const ballsOffsetsBuffer = gl.createBuffer()
-
+let oldWidth = innerWidth
+let oldHeight = innerHeight
 let textTexture
 let textTextureWidth
 let textTextureHeight
-
 let disabledDebug = true
 let oldTime = 0
 let fontLoaded = false
-// let lineAngle = 0
-
-// WebGL Programs
-// let lineWebGLProgram
 let textQuadWebGLProgram
 let quadWebGLProgram
 let ballsWebGLProgram
-
 let u_quadTextureUniformLoc
 let u_backgroundColor
 let u_thinBorderColor
@@ -78,12 +70,30 @@ let u_metaballsColor
 let u_grainSize
 let u_grainBlendFactor
 let u_time
-// let lineAngleUniformLoc
-
-// let lineVertexArray
 let ballsOffsetsArray
-// Not for rendering, just storing the balls velocities
 let ballsVelocitiesArray
+let targetTexture
+let framebuffer
+let textureInternalFormat
+let textureType
+let quadVertexBuffer
+
+/* ------- Use correct WebGL texture internal format depending on what the hardware supports ------- */
+{
+  textureInternalFormat = gl.RGBA
+  textureType = gl.UNSIGNED_TYPE
+  const rgba32fSupported = gl.getExtension('EXT_color_buffer_float') && gl.getExtension('OES_texture_float_linear')
+  if (rgba32fSupported) {
+    textureInternalFormat = gl.RGBA32F
+    textureType = gl.FLOAT
+  } else {
+    const rgba16fSupported = gl.getExtension('EXT_color_buffer_half_float') && gl.getExtension('OES_texture_half_float_linear')
+    if (rgba16fSupported) {
+      textureInternalFormat = gl.RGBA16F
+      textureType = gl.HALF_FLOAT
+    }
+  }
+}
 
 {
   const vertexShader = makeWebglShader(gl, {
@@ -172,7 +182,6 @@ let ballsVelocitiesArray
   gl.vertexAttribDivisor(a_offsetPosition, 1)
 
   gl.bindVertexArray(null)
-
 }
 
 /* ------- Create fullscreen quad WebGL program ------- */
@@ -207,7 +216,7 @@ let ballsVelocitiesArray
   ])
   const uvsArray = makeQuadUVs()
 
-  const vertexBuffer = gl.createBuffer()
+  quadVertexBuffer = gl.createBuffer()
   const uvsBuffer = gl.createBuffer()
   
   const a_position = gl.getAttribLocation(quadWebGLProgram, 'a_position')
@@ -215,7 +224,7 @@ let ballsVelocitiesArray
 
   gl.bindVertexArray(quadVertexArrayObject)
 
-  gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer)
+  gl.bindBuffer(gl.ARRAY_BUFFER, quadVertexBuffer)
   gl.bufferData(gl.ARRAY_BUFFER, vertexArray, gl.STATIC_DRAW)
   gl.enableVertexAttribArray(a_position)
   gl.vertexAttribPointer(a_position, 2, gl.FLOAT, false, 0, 0)
@@ -228,40 +237,33 @@ let ballsVelocitiesArray
   gl.bindVertexArray(null)
 }
 
-/* ------- Create WebGL texture to render to ------- */
-let textureInternalFormat = gl.RGBA32F
-if (!gl.getExtension('EXT_color_buffer_float')) {
-  gl.getExtension('EXT_color_buffer_half_float')
-  textureInternalFormat = gl.RGBA16F
-}
-if (!gl.getExtension('OES_texture_float_linear')) {
-  gl.getExtension('OES_texture_half_float_linear')
-}
-
-
-const targetTextureWidth = innerWidth * dpr
-const targetTextureHeight = innerHeight * dpr
-const targetTexture = gl.createTexture()
-gl.bindTexture(gl.TEXTURE_2D, targetTexture)
-gl.texImage2D(gl.TEXTURE_2D, 0, textureInternalFormat, targetTextureWidth, targetTextureHeight, 0, gl.RGBA, gl.FLOAT, null)
-gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
-gl.texParameterf(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
-gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
-gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
-gl.bindTexture(gl.TEXTURE_2D, null)
-
 /* ------- Create WebGL framebuffer to render to ------- */
-const framebuffer = gl.createFramebuffer()
-gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer)
-gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, targetTexture, 0)
-gl.bindFramebuffer(gl.FRAMEBUFFER, null)
+makeFramebuffer()
 
 init()
 function init () {
   canvas.id = 'metaballs-canvas'
   contentWrapper.appendChild(canvas)
   resize()
-  window.addEventListener('resize', resize)
+  window.addEventListener('resize', () => {
+    resize()
+    // Recreate framebuffer
+    gl.deleteFramebuffer(framebuffer)
+    gl.deleteTexture(targetTexture)
+    makeFramebuffer()
+
+    // Update vertices of our fullscreen quad to match new viewport
+    const vertexArray = new Float32Array([
+      0, innerHeight / 2,
+      innerWidth / 2, innerHeight / 2,
+      innerWidth / 2, 0,
+      0, innerHeight / 2,
+      innerWidth / 2, 0,
+      0, 0
+    ])
+    gl.bindBuffer(gl.ARRAY_BUFFER, quadVertexBuffer)
+    gl.bufferData(gl.ARRAY_BUFFER, vertexArray, gl.STATIC_DRAW)
+  })
 
   gui.add(CONFIG, 'gravityY').min(0.05).max(0.5).step(0.05)
   gui.add(CONFIG, 'grainSize').min(1).max(2).step(0.1).onChange(() => {
@@ -648,15 +650,7 @@ function resize () {
   const u_resolution = gl.getUniformLocation(textQuadWebGLProgram, 'u_resolution')
   gl.uniform2f(u_resolution, innerWidth, innerHeight)
   gl.useProgram(null)
-
-  // gl.useProgram(lineWebGLProgram)
-  // u_projectionMatrix = gl.getUniformLocation(lineWebGLProgram, 'u_projectionMatrix')
-  // gl.uniformMatrix4fv(u_projectionMatrix, false, projectionMatrix)
-  // const u_resolution = gl.getUniformLocation(lineWebGLProgram, 'u_resolution')
-  // gl.uniform2f(u_resolution, innerWidth, innerHeight)
-  // lineAngleUniformLoc = gl.getUniformLocation(lineWebGLProgram, 'u_angle')
-  // gl.uniform1f(lineAngleUniformLoc, lineAngle * Math.PI / 180)
-  // gl.useProgram(null)
+  
 }
 
 function loadFont ({
@@ -680,23 +674,28 @@ function loadFont ({
 }
 
 /* ------- WebGL helpers ------- */
+function makeFramebuffer () {
+  targetTexture = gl.createTexture()
+  gl.bindTexture(gl.TEXTURE_2D, targetTexture)
+  gl.texImage2D(gl.TEXTURE_2D, 0, textureInternalFormat, innerWidth * dpr, innerHeight * dpr, 0, gl.RGBA, textureType, null)
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+  gl.texParameterf(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+  gl.bindTexture(gl.TEXTURE_2D, null)
+
+  framebuffer = gl.createFramebuffer()
+  gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer)
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, targetTexture, 0)
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null)
+}
+
 function makeTextTexture ({
   text = CONFIG.labelText,
   extraYPadding = 20
 } = {}) {
   const canvas = document.createElement('canvas')
   const ctx = canvas.getContext('2d')
-
-  // canvas.setAttribute('style', `
-  //   position: fixed;
-  //   top: 12px;
-  //   left: 12px;
-  //   z-index: 9999;
-  // `)
-  // document.body.appendChild(canvas)
-
-  // debugger
-
   canvas.width = CONFIG.textQuadWidth
 
   const referenceFontSize = 42
