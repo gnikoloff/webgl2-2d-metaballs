@@ -216,19 +216,9 @@ function init () {
   gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
   // gl.blendEquation(gl.FUNC_SUBTRACT)
 
-  let projectionMatrix = makeProjectionMatrix(innerWidth / 2, innerHeight / 2)
-  let u_projectionMatrix
-
-  gl.useProgram(ballsWebGLProgram)
-  u_projectionMatrix = gl.getUniformLocation(ballsWebGLProgram, 'u_projectionMatrix')
-  gl.uniformMatrix4fv(u_projectionMatrix, false, projectionMatrix)
-  gl.useProgram(null)
-
   gl.useProgram(quadWebGLProgram)
   quadTextureUniformLoc = gl.getUniformLocation(quadWebGLProgram, 'u_texture')
   gl.uniform1i(quadTextureUniformLoc, 0)
-  u_projectionMatrix = gl.getUniformLocation(quadWebGLProgram, 'u_projectionMatrix')
-  gl.uniformMatrix4fv(u_projectionMatrix, false, projectionMatrix)
   gl.useProgram(null)
 
   requestAnimationFrame(renderFrame)
