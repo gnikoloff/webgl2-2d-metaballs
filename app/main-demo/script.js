@@ -8,8 +8,8 @@ import quadFragmentShaderSource from './quad.frag'
 import ballsVertexShaderSource from './balls.vert'
 import ballsFragmentShaderSource from './balls.frag'
 
-import lineVertexShaderSource from './line.vert'
-import lineFragmentShaderSource from './line.frag'
+import textVertexShaderSource from './text.vert'
+import textFragmentShaderSource from './text.frag'
 
 import './style.css'
 
@@ -89,13 +89,13 @@ let ballsVelocitiesArray
   const vertexShader = makeWebglShader(gl, {
     shaderType: gl.VERTEX_SHADER,
     shaderSource: `#version 300 es
-      ${lineVertexShaderSource}
+      ${textVertexShaderSource}
     `
   })
   const fragmentShader = makeWebglShader(gl, {
     shaderType: gl.FRAGMENT_SHADER,
     shaderSource: `#version 300 es
-      ${lineFragmentShaderSource}
+      ${textFragmentShaderSource}
     `
   })
   textQuadWebGLProgram = makeWebglProram(gl, {
