@@ -20,7 +20,7 @@ npm install
 Compile the code for development and start a local server:
 
 ```
-npm start
+npm run start:dev
 ```
 
 Create the build:
@@ -30,8 +30,9 @@ npm run build
 ```
 
 ## Credits
-
-- *third party resources*
+References and quotes taken from:
+- [WebGL2 Fundamentals](https://webgl2fundamentals.org/)
+- [TojiCode](https://blog.tojicode.com/)
 
 ## Misc
 

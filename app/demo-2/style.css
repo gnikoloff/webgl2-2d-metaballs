@@ -38,7 +38,7 @@ body {
 }
 
 .webgl2-not-supported::after {
-	ontent: 'Please view in a browser that supports WebGL2';
+	  content: 'Please view in a browser that supports WebGL2';
     text-align: center;
     max-width: 400px;
     width: 90%;

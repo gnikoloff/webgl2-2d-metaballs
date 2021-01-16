@@ -8,8 +8,8 @@ import quadFragmentShaderSource from './quad.frag'
 import ballsVertexShaderSource from './balls.vert'
 import ballsFragmentShaderSource from './balls.frag'
 
-import lineVertexShaderSource from './line.vert'
-import lineFragmentShaderSource from './line.frag'
+import textVertexShaderSource from './text.vert'
+import textFragmentShaderSource from './text.frag'
 
 import './style.css'
 
@@ -89,13 +89,13 @@ let ballsVelocitiesArray
   const vertexShader = makeWebglShader(gl, {
     shaderType: gl.VERTEX_SHADER,
     shaderSource: `#version 300 es
-      ${lineVertexShaderSource}
+      ${textVertexShaderSource}
     `
   })
   const fragmentShader = makeWebglShader(gl, {
     shaderType: gl.FRAGMENT_SHADER,
     shaderSource: `#version 300 es
-      ${lineFragmentShaderSource}
+      ${textFragmentShaderSource}
     `
   })
   textQuadWebGLProgram = makeWebglProram(gl, {
@@ -103,68 +103,6 @@ let ballsVelocitiesArray
     fragmentShader
   })
 }
-
-// /* ------- Create horizontal line WebGL program ------- */
-// {
-//   const vertexShader = makeWebglShader(gl, {
-//     shaderType: gl.VERTEX_SHADER,
-//     shaderSource: `#version 300 es
-//       uniform mat4 u_projectionMatrix;
-//       uniform vec2 u_resolution;
-//       uniform float u_angle;
-
-//       in vec4 a_position;
-
-//       mat4 rotationZ( in float angle ) {
-//         return mat4(
-//           cos(angle),	-sin(angle), 0.0, 0.0,
-//           sin(angle),	 cos(angle), 0.0,	0.0,
-//           0.0, 0.0, 1.0, 0.0,
-//           0.0, 0.0, 0.0, 1.0
-//         );
-//       }
-
-//       void main () {
-//         gl_Position = u_projectionMatrix * (rotationZ(u_angle) * a_position + vec4(u_resolution.xy / 2.0, 0.0, 1.0));
-//       }
-//     `,
-//   })
-//   const fragmentShader = makeWebglShader(gl, {
-//     shaderType: gl.FRAGMENT_SHADER,
-//     shaderSource: `#version 300 es
-//       precision highp float;
-
-//       out vec4 outputColor;
-
-//       void main () {
-//         outputColor = vec4(0.94, 0.76, 0.05, 1);
-//       }
-//     `,
-//   })
-//   lineWebGLProgram = makeWebglProram(gl, {
-//     vertexShader,
-//     fragmentShader,
-//   })
-// }
-
-// /* ------- Create and assign horizontal line WebGL attributes ------- */
-// {
-//   lineVertexArray = new Float32Array([-CONFIG.lineWidth / 2, 0, CONFIG.lineWidth / 2, 0])
-
-  
-//   const vertexBuffer = gl.createBuffer()
-
-//   const a_position = gl.getAttribLocation(lineWebGLProgram, 'a_position')
-  
-//   gl.bindVertexArray(lineVertexArrayObject)
-
-//   gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer)
-//   gl.bufferData(gl.ARRAY_BUFFER, lineVertexArray, gl.STATIC_DRAW)
-//   gl.enableVertexAttribArray(a_position)
-//   gl.vertexAttribPointer(a_position, 2, gl.FLOAT, false, 0, 0)
-
-//   gl.bindVertexArray(null)
-// }
 
 /* ------- Create metaballs WebGL program ------- */
 {
@@ -702,6 +640,13 @@ function resize () {
   gl.useProgram(quadWebGLProgram)
   u_projectionMatrix = gl.getUniformLocation(quadWebGLProgram, 'u_projectionMatrix')
   gl.uniformMatrix4fv(u_projectionMatrix, false, projectionMatrix)
+  gl.useProgram(null)
+
+  gl.useProgram(textQuadWebGLProgram)
+  u_projectionMatrix = gl.getUniformLocation(textQuadWebGLProgram, 'u_projectionMatrix')
+  gl.uniformMatrix4fv(u_projectionMatrix, false, projectionMatrix)
+  const u_resolution = gl.getUniformLocation(textQuadWebGLProgram, 'u_resolution')
+  gl.uniform2f(u_resolution, innerWidth, innerHeight)
   gl.useProgram(null)
 
   // gl.useProgram(lineWebGLProgram)
