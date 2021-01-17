@@ -8,6 +8,7 @@ uniform vec3 u_thinBorderColor;
 uniform vec3 u_fatBorderColor;
 uniform vec3 u_metaballsColor;
 uniform vec2 u_resolution;
+uniform float u_grainSize;
 uniform float u_grainBlendFactor;
 uniform float u_time;
 
@@ -47,7 +48,7 @@ void main () {
     cutoff
   );
 
-  float g = grain(v_uv, u_resolution.xy / 2.0 + u_time * 0.5);
+  float g = grain(v_uv, u_resolution.xy / u_grainSize + u_time * 0.5);
   vec4 grainColor = vec4(g);
 
   outputColor = mix(outputColor, grainColor, u_grainBlendFactor);

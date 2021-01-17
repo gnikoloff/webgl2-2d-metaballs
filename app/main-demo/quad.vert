@@ -1,5 +1,4 @@
 uniform mat4 u_projectionMatrix;
-uniform vec2 u_scale;
 
 in vec4 a_position;
 in vec2 a_uv;

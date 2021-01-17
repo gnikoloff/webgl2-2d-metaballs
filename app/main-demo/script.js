@@ -1,10 +1,13 @@
 import WebFont from 'webfontloader'
+// import throttle from 'lodash.throttle'
 import * as dat from 'dat.gui'
 
 import quadVertexShaderSource from './quad.vert'
 import quadFragmentShaderSource from './quad.frag'
+
 import ballsVertexShaderSource from './balls.vert'
 import ballsFragmentShaderSource from './balls.frag'
+
 import textVertexShaderSource from './text.vert'
 import textFragmentShaderSource from './text.frag'
 
@@ -21,6 +24,7 @@ const CONFIG = {
   labelFontFamily: 'Josefin Sans',
   labelFontWeight: 600,
   labelText: '2021',
+  grainSize: 1.1,
   grainBlendFactor: 0.04,
   animateGrain: true,
   palette: {
@@ -34,59 +38,52 @@ const CONFIG = {
 const gui = new dat.GUI()
 gui.close()
 
-const dpr = devicePixelRatio > 2.5 ? 2.5 : devicePixelRatio
 const contentWrapper = document.querySelector('.content')
 const canvas = document.createElement('canvas')
 const gl = canvas.getContext('webgl2')
-const textQuadVertexArrayObject = gl.createVertexArray()
-const quadVertexArrayObject = gl.createVertexArray()
-const ballsVertexArrayObject = gl.createVertexArray()
-const ballsOffsetsBuffer = gl.createBuffer()
+
+const dpr = devicePixelRatio > 2.5 ? 2.5 : devicePixelRatio
 
 if (!gl) {
   document.body.classList.add('webgl2-not-supported')
 }
 
+// const lineVertexArrayObject = gl.createVertexArray()
+const textQuadVertexArrayObject = gl.createVertexArray()
+const quadVertexArrayObject = gl.createVertexArray()
+const ballsVertexArrayObject = gl.createVertexArray()
+
+const ballsOffsetsBuffer = gl.createBuffer()
+
 let textTexture
 let textTextureWidth
 let textTextureHeight
+
 let disabledDebug = true
 let oldTime = 0
 let fontLoaded = false
+// let lineAngle = 0
+
+// WebGL Programs
+// let lineWebGLProgram
 let textQuadWebGLProgram
 let quadWebGLProgram
 let ballsWebGLProgram
+
 let u_quadTextureUniformLoc
 let u_backgroundColor
 let u_thinBorderColor
 let u_fatBorderColor
 let u_metaballsColor
+let u_grainSize
 let u_grainBlendFactor
 let u_time
-let ballsOffsetsArray
-let ballsVelocitiesArray
-let targetTexture
-let framebuffer
-let textureInternalFormat
-let textureType
-let quadVertexBuffer
+// let lineAngleUniformLoc
 
-/* ------- Use correct WebGL texture internal format depending on what the hardware supports ------- */
-{
-  textureInternalFormat = gl.RGBA
-  textureType = gl.UNSIGNED_TYPE
-  const rgba32fSupported = gl.getExtension('EXT_color_buffer_float') && gl.getExtension('OES_texture_float_linear')
-  if (rgba32fSupported) {
-    textureInternalFormat = gl.RGBA32F
-    textureType = gl.FLOAT
-  } else {
-    const rgba16fSupported = gl.getExtension('EXT_color_buffer_half_float') && gl.getExtension('OES_texture_half_float_linear')
-    if (rgba16fSupported) {
-      textureInternalFormat = gl.RGBA16F
-      textureType = gl.HALF_FLOAT
-    }
-  }
-}
+// let lineVertexArray
+let ballsOffsetsArray
+// Not for rendering, just storing the balls velocities
+let ballsVelocitiesArray
 
 {
   const vertexShader = makeWebglShader(gl, {
@@ -175,6 +172,7 @@ let quadVertexBuffer
   gl.vertexAttribDivisor(a_offsetPosition, 1)
 
   gl.bindVertexArray(null)
+
 }
 
 /* ------- Create fullscreen quad WebGL program ------- */
@@ -209,7 +207,7 @@ let quadVertexBuffer
   ])
   const uvsArray = makeQuadUVs()
 
-  quadVertexBuffer = gl.createBuffer()
+  const vertexBuffer = gl.createBuffer()
   const uvsBuffer = gl.createBuffer()
   
   const a_position = gl.getAttribLocation(quadWebGLProgram, 'a_position')
@@ -217,7 +215,7 @@ let quadVertexBuffer
 
   gl.bindVertexArray(quadVertexArrayObject)
 
-  gl.bindBuffer(gl.ARRAY_BUFFER, quadVertexBuffer)
+  gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer)
   gl.bufferData(gl.ARRAY_BUFFER, vertexArray, gl.STATIC_DRAW)
   gl.enableVertexAttribArray(a_position)
   gl.vertexAttribPointer(a_position, 2, gl.FLOAT, false, 0, 0)
@@ -230,66 +228,80 @@ let quadVertexBuffer
   gl.bindVertexArray(null)
 }
 
+/* ------- Create WebGL texture to render to ------- */
+let textureInternalFormat = gl.RGBA32F
+if (!gl.getExtension('EXT_color_buffer_float')) {
+  gl.getExtension('EXT_color_buffer_half_float')
+  textureInternalFormat = gl.RGBA16F
+}
+if (!gl.getExtension('OES_texture_float_linear')) {
+  gl.getExtension('OES_texture_half_float_linear')
+}
+
+
+const targetTextureWidth = innerWidth * dpr
+const targetTextureHeight = innerHeight * dpr
+const targetTexture = gl.createTexture()
+gl.bindTexture(gl.TEXTURE_2D, targetTexture)
+gl.texImage2D(gl.TEXTURE_2D, 0, textureInternalFormat, targetTextureWidth, targetTextureHeight, 0, gl.RGBA, gl.FLOAT, null)
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+gl.texParameterf(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+gl.bindTexture(gl.TEXTURE_2D, null)
+
 /* ------- Create WebGL framebuffer to render to ------- */
-makeFramebuffer()
+const framebuffer = gl.createFramebuffer()
+gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer)
+gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, targetTexture, 0)
+gl.bindFramebuffer(gl.FRAMEBUFFER, null)
 
 init()
 function init () {
   canvas.id = 'metaballs-canvas'
   contentWrapper.appendChild(canvas)
-  // Handle resizing
   resize()
-  window.addEventListener('resize', () => {
-    resize()
-    // Recreate framebuffer
-    gl.deleteFramebuffer(framebuffer)
-    gl.deleteTexture(targetTexture)
-    makeFramebuffer()
+  window.addEventListener('resize', resize)
 
-    // Update vertices of our fullscreen quad to match new viewport
-    const vertexArray = new Float32Array([
-      0, innerHeight / 2,
-      innerWidth / 2, innerHeight / 2,
-      innerWidth / 2, 0,
-      0, innerHeight / 2,
-      innerWidth / 2, 0,
-      0, 0
-    ])
-    gl.bindBuffer(gl.ARRAY_BUFFER, quadVertexBuffer)
-    gl.bufferData(gl.ARRAY_BUFFER, vertexArray, gl.STATIC_DRAW)
+  gui.add(CONFIG, 'gravityY').min(0.05).max(0.5).step(0.05)
+  gui.add(CONFIG, 'grainSize').min(1).max(2).step(0.1).onChange(() => {
+    gl.useProgram(quadWebGLProgram)
+    gl.uniform1f(u_grainSize, CONFIG.grainSize)
+    gl.useProgram(null)
   })
-
-  // Handle dat.GUI settings changes
-  {
-    gui.add(CONFIG, 'gravityY').min(0.05).max(0.5).step(0.05)
-    gui.add(CONFIG, 'grainBlendFactor').min(0).max(0.3).onChange(() => {
-      gl.useProgram(quadWebGLProgram)
-      gl.uniform1f(u_grainBlendFactor, CONFIG.grainBlendFactor)
-      gl.useProgram(null)
-    })
-    gui.add(CONFIG, 'animateGrain')
-    gui.add(CONFIG, 'labelText').onChange(renderLabelQuad)
-    gui.addColor(CONFIG.palette, 'backgroundColor').onChange(val => {
-      gl.useProgram(quadWebGLProgram)
-      gl.uniform3f(u_backgroundColor, ...CONFIG.palette.backgroundColor.map(a => a / 255))
-      gl.useProgram(null)
-    })
-    gui.addColor(CONFIG.palette, 'thinBorderColor').onChange(val => {
-      gl.useProgram(quadWebGLProgram)
-      gl.uniform3f(u_thinBorderColor, ...CONFIG.palette.thinBorderColor.map(a => a / 255))
-      gl.useProgram(null)
-    })
-    gui.addColor(CONFIG.palette, 'fatBorderColor').onChange(val => {
-      gl.useProgram(quadWebGLProgram)
-      gl.uniform3f(u_fatBorderColor, ...CONFIG.palette.fatBorderColor.map(a => a / 255))
-      gl.useProgram(null)
-    })
-    gui.addColor(CONFIG.palette, 'metaballsColor').onChange(val => {
-      gl.useProgram(quadWebGLProgram)
-      gl.uniform3f(u_metaballsColor, ...CONFIG.palette.metaballsColor.map(a => a / 255))
-      gl.useProgram(null)
-    })
-  }
+  gui.add(CONFIG, 'grainBlendFactor').min(0).max(0.3).onChange(() => {
+    gl.useProgram(quadWebGLProgram)
+    gl.uniform1f(u_grainBlendFactor, CONFIG.grainBlendFactor)
+    gl.useProgram(null)
+  })
+  gui.add(CONFIG, 'animateGrain')
+  gui.add(CONFIG, 'labelText').onChange(renderLabelQuad)
+  // gui.add(CONFIG, 'labelFontFamily').onChange(throttle(e => {
+  //   loadFont().then(renderLabelQuad)
+  // }, 300))
+  // gui.add(CONFIG, 'labelFontWeight').onChange(throttle(e => {
+  //   loadFont().then(renderLabelQuad)
+  // }, 300))
+  gui.addColor(CONFIG.palette, 'backgroundColor').onChange(val => {
+    gl.useProgram(quadWebGLProgram)
+    gl.uniform3f(u_backgroundColor, ...CONFIG.palette.backgroundColor.map(a => a / 255))
+    gl.useProgram(null)
+  })
+  gui.addColor(CONFIG.palette, 'thinBorderColor').onChange(val => {
+    gl.useProgram(quadWebGLProgram)
+    gl.uniform3f(u_thinBorderColor, ...CONFIG.palette.thinBorderColor.map(a => a / 255))
+    gl.useProgram(null)
+  })
+  gui.addColor(CONFIG.palette, 'fatBorderColor').onChange(val => {
+    gl.useProgram(quadWebGLProgram)
+    gl.uniform3f(u_fatBorderColor, ...CONFIG.palette.fatBorderColor.map(a => a / 255))
+    gl.useProgram(null)
+  })
+  gui.addColor(CONFIG.palette, 'metaballsColor').onChange(val => {
+    gl.useProgram(quadWebGLProgram)
+    gl.uniform3f(u_metaballsColor, ...CONFIG.palette.metaballsColor.map(a => a / 255))
+    gl.useProgram(null)
+  })
 
   setInterval(() => {
     CONFIG.gravityX *= -1
@@ -299,12 +311,23 @@ function init () {
 
   gl.enable(gl.BLEND)
   gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+  // gl.blendEquation(gl.FUNC_SUBTRACT)
 
-  // Initialize correct uniforms
+  const projectionMatrix = makeProjectionMatrix(innerWidth / 2, innerHeight / 2)
+
+  let u_projectionMatrix
   let u_resolution
+
+  gl.useProgram(ballsWebGLProgram)
+  u_projectionMatrix = gl.getUniformLocation(ballsWebGLProgram, 'u_projectionMatrix')
+  gl.uniformMatrix4fv(u_projectionMatrix, false, projectionMatrix)
+  gl.useProgram(null)
+
   gl.useProgram(quadWebGLProgram)
   u_quadTextureUniformLoc = gl.getUniformLocation(quadWebGLProgram, 'u_texture')
   gl.uniform1i(u_quadTextureUniformLoc, 0)
+  u_projectionMatrix = gl.getUniformLocation(quadWebGLProgram, 'u_projectionMatrix')
+  gl.uniformMatrix4fv(u_projectionMatrix, false, projectionMatrix)
   u_backgroundColor = gl.getUniformLocation(quadWebGLProgram, 'u_backgroundColor')
   gl.uniform3f(u_backgroundColor, ...CONFIG.palette.backgroundColor.map(a => a / 255))
   u_thinBorderColor = gl.getUniformLocation(quadWebGLProgram, 'u_thinBorderColor')
@@ -313,6 +336,8 @@ function init () {
   gl.uniform3f(u_fatBorderColor, ...CONFIG.palette.fatBorderColor.map(a => a / 255))
   u_metaballsColor = gl.getUniformLocation(quadWebGLProgram, 'u_metaballsColor')
   gl.uniform3f(u_metaballsColor, ...CONFIG.palette.metaballsColor.map(a => a / 255))
+  u_grainSize = gl.getUniformLocation(quadWebGLProgram, 'u_grainSize')
+  gl.uniform1f(u_grainSize, CONFIG.grainSize)
   u_grainBlendFactor = gl.getUniformLocation(quadWebGLProgram, 'u_grainBlendFactor')
   gl.uniform1f(u_grainBlendFactor, CONFIG.grainBlendFactor)
   u_resolution = gl.getUniformLocation(quadWebGLProgram, 'u_resolution')
@@ -321,14 +346,28 @@ function init () {
   gl.uniform1f(u_time, 0)
   gl.useProgram(null)
 
+
+  // gl.useProgram(lineWebGLProgram)
+  // u_projectionMatrix = gl.getUniformLocation(lineWebGLProgram, 'u_projectionMatrix')
+  // gl.uniformMatrix4fv(u_projectionMatrix, false, projectionMatrix)
+
+  // const u_resolution = gl.getUniformLocation(lineWebGLProgram, 'u_resolution')
+  // gl.uniform2f(u_resolution, innerWidth, innerHeight)
+
+  // lineAngleUniformLoc = gl.getUniformLocation(lineWebGLProgram, 'u_angle')
+  // gl.uniform1f(lineAngleUniformLoc, lineAngle * Math.PI / 180)
+
+  // gl.useProgram(null)
+
   gl.useProgram(textQuadWebGLProgram)
+  u_projectionMatrix = gl.getUniformLocation(textQuadWebGLProgram, 'u_projectionMatrix')
+  gl.uniformMatrix4fv(u_projectionMatrix, false, projectionMatrix)
   u_resolution = gl.getUniformLocation(textQuadWebGLProgram, 'u_resolution')
   gl.uniform2f(u_resolution, innerWidth, innerHeight)
   const u_textTexture = gl.getUniformLocation(textQuadWebGLProgram, 'u_textTexture')
   gl.uniform1i(u_textTexture, 0)
   gl.useProgram(null)
 
-  // Issue next frame update and render
   requestAnimationFrame(renderFrame)
   
 }
@@ -346,10 +385,10 @@ function renderLabelQuad () {
 
   const vertexArray = new Float32Array([
     -width / 2,  height / 2,
-     width / 2,  height / 2,
-     width / 2, -height / 2,
+      width / 2,  height / 2,
+      width / 2, -height / 2,
     -width / 2,  height / 2,
-     width / 2, -height / 2,
+      width / 2, -height / 2,
     -width / 2, -height / 2
   ])
   const uvsArray = makeQuadUVs()
@@ -382,11 +421,20 @@ function renderFrame (ts) {
   oldTime = ts
 
   for (let i = 0; i < CONFIG.ballsCount; i++) {
+
+
+
     ballsVelocitiesArray[i * 2 + 0] += CONFIG.gravityX
     ballsVelocitiesArray[i * 2 + 1] += CONFIG.gravityY
-    ballsOffsetsArray[i * 2 + 0] += ballsVelocitiesArray[i * 2 + 0] * (dt * 0.075)
+
+    ballsOffsetsArray[i * 2 + 0] += ballsVelocitiesArray[i * 2 + 0]
     
     const radius = CONFIG.ballRadius / 5
+
+    // const quadTop = ballsOffsetsArray[i * 2 + 1] - radius / 2
+    // const quadRight = ballsOffsetsArray[i * 2 + 0] + radius / 2
+    // const quadBottom = ballsOffsetsArray[i * 2 + 1] + radius / 2
+    // const quadLeft = ballsOffsetsArray[i * 2 + 0] - radius / 2
     
     const centerBoxTop = innerHeight / 2 - textTextureHeight / 2
     const centerBoxRight = innerWidth / 2 + textTextureWidth / 2
@@ -399,7 +447,6 @@ function renderFrame (ts) {
     const quadvx = ballsVelocitiesArray[i * 2 + 0]
     const quadvy = ballsVelocitiesArray[i * 2 + 1]
 
-    // Handle text box collisions
     if (
       quadx + radius + quadvx > centerBoxLeft &&
       quadx - radius + quadvx < centerBoxRight &&
@@ -408,6 +455,7 @@ function renderFrame (ts) {
     ) {
       ballsVelocitiesArray[i * 2 + 0] *= -1
     }
+
     if (
       quadx + radius > centerBoxLeft &&
       quadx - radius < centerBoxRight &&
@@ -415,12 +463,13 @@ function renderFrame (ts) {
       quady - radius + quadvy < centerBoxBottom
     ) {
       ballsOffsetsArray[i * 2 + 1] = centerBoxTop - radius - quadvy
+      // ballsVelocitiesArray[i * 2 + 0] += (Math.random() * 2 - 1) * 3
       ballsVelocitiesArray[i * 2 + 1] *= -0.2
     } else {
-      ballsOffsetsArray[i * 2 + 1] += ballsVelocitiesArray[i * 2 + 1] * (dt * 0.06)
+      ballsOffsetsArray[i * 2 + 1] += ballsVelocitiesArray[i * 2 + 1]
     }
 
-    // Bounce off left & right viewport edge
+
     if (ballsOffsetsArray[i * 2 + 0] < 0) {
       ballsOffsetsArray[i * 2 + 0] = 0
       ballsVelocitiesArray[i * 2 + 0] *= -0.75
@@ -430,7 +479,6 @@ function renderFrame (ts) {
       ballsVelocitiesArray[i * 2 + 0] *= -0.75
     }
 
-    // Regenerate balls when they fall below bottom viewport edge
     if (ballsOffsetsArray[i * 2 + 1] - CONFIG.ballRadius > innerHeight) {
       ballsOffsetsArray[i * 2 + 1] = -CONFIG.ballRadius
       ballsVelocitiesArray[i * 2 + 1] = 5 + Math.random() * 3
@@ -438,7 +486,8 @@ function renderFrame (ts) {
 
   }
 
-  // Pass updated positions to our balls
+  // checkLine()
+
   gl.bindBuffer(gl.ARRAY_BUFFER, ballsOffsetsBuffer)
   gl.bufferData(gl.ARRAY_BUFFER, ballsOffsetsArray, gl.DYNAMIC_DRAW)
   
@@ -446,21 +495,19 @@ function renderFrame (ts) {
     gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer)
   }
 
-  // Set correct canvas viewport and color
   gl.viewport(0, 0, canvas.width, canvas.height)
   gl.clearColor(0, 0, 0, 0)
   gl.clear(gl.COLOR_BUFFER_BIT)
 
-  // Render balls
   gl.bindVertexArray(ballsVertexArrayObject)
   gl.useProgram(ballsWebGLProgram)
   gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, CONFIG.ballsCount)
   gl.bindVertexArray(null)
 
   gl.bindFramebuffer(gl.FRAMEBUFFER, null)
+
   gl.viewport(0, 0, canvas.width, canvas.height)
 
-  // Render fullscreen postprocessing quad
   if (disabledDebug) {
     gl.bindVertexArray(quadVertexArrayObject)
     gl.useProgram(quadWebGLProgram)
@@ -473,7 +520,16 @@ function renderFrame (ts) {
     gl.bindTexture(gl.TEXTURE_2D, null)
   }
 
-  // Render text quad
+  // lineAngle = Math.sin(ts * 0.001) * 30
+
+  // gl.bindVertexArray(lineVertexArrayObject)
+  // gl.useProgram(lineWebGLProgram)
+  // gl.uniform1f(lineAngleUniformLoc, -lineAngle * Math.PI / 180)
+  // gl.drawArrays(gl.LINES, 0, 2)
+  // gl.useProgram(null)
+  // gl.bindVertexArray(null)
+
+  // render quad
   if (fontLoaded) {
     gl.useProgram(textQuadWebGLProgram)
     gl.bindVertexArray(textQuadVertexArrayObject)
@@ -487,6 +543,85 @@ function renderFrame (ts) {
   requestAnimationFrame(renderFrame)
 }
 
+function getLineBounds () {
+  const x1 = lineVertexArray[0]
+  const y1 = lineVertexArray[1]
+  const x2 = lineVertexArray[2]
+  const y2 = lineVertexArray[3]
+  if (lineAngle === 0) {
+    const minX = Math.min(x1, x2)
+    const minY = Math.min(y1, y2)
+    const maxX = Math.max(x1, x2)
+    const maxY = Math.max(y1, y2)
+    return {
+      x: innerWidth / 2 + x1 + minX + CONFIG.lineWidth / 2,
+      y: innerHeight / 2 + y1 + minY + CONFIG.lineWidth / 2,
+      width: maxX - minX,
+      height: maxY - minY,
+    }
+  } else {
+    const rotation = lineAngle * Math.PI / 180
+    const sin = Math.sin(rotation)
+    const cos = Math.cos(rotation)
+    const x1r = cos * x1 + sin * y1
+    const x2r = cos * x2 + sin * y2
+    const y1r = cos * y1 + sin * x1
+    const y2r = cos * y2 + sin * x2
+    const x = innerWidth / 2 + x1 + Math.min(x1r, x2r) + CONFIG.lineWidth / 2
+    const y = innerHeight / 2 + y1 + Math.min(y1r, y2r) + CONFIG.lineWidth / 2
+    const width = Math.max(x1r, x2r) - Math.min(x1r, x2r)
+    const height = Math.max(y1r, y2r) - Math.min(y1r, y2r)
+    return {
+      x,
+      y,
+      width,
+      height,
+    }
+  }
+}
+
+function checkLine () {
+  const lineBounds = getLineBounds()
+  const ballRadius = CONFIG.ballRadius / 7
+
+  for (let i = 0; i < CONFIG.ballsCount; i++) {
+    const ballx = ballsOffsetsArray[i * 2 + 0]
+    const bally = ballsOffsetsArray[i * 2 + 1]
+    const ballvx = ballsVelocitiesArray[i * 2 + 0]
+    const ballvy = ballsVelocitiesArray[i * 2 + 1]
+    if (ballx + ballRadius / 2 > lineBounds.x && ballx - ballRadius / 2 < lineBounds.x + lineBounds.width) {
+    
+      const lineRotation = lineAngle * Math.PI / 180
+      const cos = Math.cos(lineRotation)
+      const sin = Math.sin(lineRotation)
+
+      let x = ballx - innerWidth / 2 
+      let y = bally - innerHeight / 2
+      let vx1 = cos * ballvx + sin * ballvy
+      let vy1 = cos * ballvy - sin * ballvx
+
+      let y1 = cos * y - sin * x
+
+      if (y1 > -ballRadius / 2 && y1 < vy1) {
+        // debugger
+        const x2 = cos * x + sin * y
+
+        y1 = -ballRadius / 2
+        vy1 *= -0.45
+
+        x = cos * x2 - sin * y1
+        y = cos * y1 + sin * x2
+
+        ballsVelocitiesArray[i * 2 + 0] = cos * vx1 - sin * vy1
+        ballsVelocitiesArray[i * 2 + 1] = cos * vy1 + sin * vx1
+
+        ballsOffsetsArray[i * 2 + 0] = innerWidth / 2 + x
+        ballsOffsetsArray[i * 2 + 1] = innerHeight / 2 + y
+      }
+    }
+  }
+}
+
 function resize () {
   canvas.width = innerWidth * dpr
   canvas.height = innerHeight * dpr
@@ -495,8 +630,8 @@ function resize () {
 
   const projectionMatrix = makeProjectionMatrix(innerWidth / 2, innerHeight / 2)
 
-  // Update and pass correct projectionMatrix
   let u_projectionMatrix
+
   gl.useProgram(ballsWebGLProgram)
   u_projectionMatrix = gl.getUniformLocation(ballsWebGLProgram, 'u_projectionMatrix')
   gl.uniformMatrix4fv(u_projectionMatrix, false, projectionMatrix)
@@ -513,7 +648,15 @@ function resize () {
   const u_resolution = gl.getUniformLocation(textQuadWebGLProgram, 'u_resolution')
   gl.uniform2f(u_resolution, innerWidth, innerHeight)
   gl.useProgram(null)
-  
+
+  // gl.useProgram(lineWebGLProgram)
+  // u_projectionMatrix = gl.getUniformLocation(lineWebGLProgram, 'u_projectionMatrix')
+  // gl.uniformMatrix4fv(u_projectionMatrix, false, projectionMatrix)
+  // const u_resolution = gl.getUniformLocation(lineWebGLProgram, 'u_resolution')
+  // gl.uniform2f(u_resolution, innerWidth, innerHeight)
+  // lineAngleUniformLoc = gl.getUniformLocation(lineWebGLProgram, 'u_angle')
+  // gl.uniform1f(lineAngleUniformLoc, lineAngle * Math.PI / 180)
+  // gl.useProgram(null)
 }
 
 function loadFont ({
@@ -537,28 +680,23 @@ function loadFont ({
 }
 
 /* ------- WebGL helpers ------- */
-function makeFramebuffer () {
-  targetTexture = gl.createTexture()
-  gl.bindTexture(gl.TEXTURE_2D, targetTexture)
-  gl.texImage2D(gl.TEXTURE_2D, 0, textureInternalFormat, innerWidth * dpr, innerHeight * dpr, 0, gl.RGBA, textureType, null)
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
-  gl.texParameterf(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
-  gl.bindTexture(gl.TEXTURE_2D, null)
-
-  framebuffer = gl.createFramebuffer()
-  gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer)
-  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, targetTexture, 0)
-  gl.bindFramebuffer(gl.FRAMEBUFFER, null)
-}
-
 function makeTextTexture ({
   text = CONFIG.labelText,
   extraYPadding = 20
 } = {}) {
   const canvas = document.createElement('canvas')
   const ctx = canvas.getContext('2d')
+
+  // canvas.setAttribute('style', `
+  //   position: fixed;
+  //   top: 12px;
+  //   left: 12px;
+  //   z-index: 9999;
+  // `)
+  // document.body.appendChild(canvas)
+
+  // debugger
+
   canvas.width = CONFIG.textQuadWidth
 
   const referenceFontSize = 42
@@ -634,4 +772,36 @@ function makeProjectionMatrix (width, height) {
     0, 0, 0, 0,
     -1, 1, 0, 1,
   ])
+}
+
+/* ------- Generic helpers ------- */
+function isMobileBrowser () {
+  return (function (a) {
+    if (/(android|bb\d+|meego).+mobile|avantgo|bada\/|blackberry|blazer|compal|elaine|fennec|hiptop|iemobile|ip(hone|od)|iris|kindle|lge |maemo|midp|mmp|mobile.+firefox|netfront|opera m(ob|in)i|palm( os)?|phone|p(ixi|re)\/|plucker|pocket|psp|series(4|6)0|symbian|treo|up\.(browser|link)|vodafone|wap|windows ce|xda|xiino|android|ipad|playbook|silk/i.test(a) || /1207|6310|6590|3gso|4thp|50[1-6]i|770s|802s|a wa|abac|ac(er|oo|s\-)|ai(ko|rn)|al(av|ca|co)|amoi|an(ex|ny|yw)|aptu|ar(ch|go)|as(te|us)|attw|au(di|\-m|r |s )|avan|be(ck|ll|nq)|bi(lb|rd)|bl(ac|az)|br(e|v)w|bumb|bw\-(n|u)|c55\/|capi|ccwa|cdm\-|cell|chtm|cldc|cmd\-|co(mp|nd)|craw|da(it|ll|ng)|dbte|dc\-s|devi|dica|dmob|do(c|p)o|ds(12|\-d)|el(49|ai)|em(l2|ul)|er(ic|k0)|esl8|ez([4-7]0|os|wa|ze)|fetc|fly(\-|_)|g1 u|g560|gene|gf\-5|g\-mo|go(\.w|od)|gr(ad|un)|haie|hcit|hd\-(m|p|t)|hei\-|hi(pt|ta)|hp( i|ip)|hs\-c|ht(c(\-| |_|a|g|p|s|t)|tp)|hu(aw|tc)|i\-(20|go|ma)|i230|iac( |\-|\/)|ibro|idea|ig01|ikom|im1k|inno|ipaq|iris|ja(t|v)a|jbro|jemu|jigs|kddi|keji|kgt( |\/)|klon|kpt |kwc\-|kyo(c|k)|le(no|xi)|lg( g|\/(k|l|u)|50|54|\-[a-w])|libw|lynx|m1\-w|m3ga|m50\/|ma(te|ui|xo)|mc(01|21|ca)|m\-cr|me(rc|ri)|mi(o8|oa|ts)|mmef|mo(01|02|bi|de|do|t(\-| |o|v)|zz)|mt(50|p1|v )|mwbp|mywa|n10[0-2]|n20[2-3]|n30(0|2)|n50(0|2|5)|n7(0(0|1)|10)|ne((c|m)\-|on|tf|wf|wg|wt)|nok(6|i)|nzph|o2im|op(ti|wv)|oran|owg1|p800|pan(a|d|t)|pdxg|pg(13|\-([1-8]|c))|phil|pire|pl(ay|uc)|pn\-2|po(ck|rt|se)|prox|psio|pt\-g|qa\-a|qc(07|12|21|32|60|\-[2-7]|i\-)|qtek|r380|r600|raks|rim9|ro(ve|zo)|s55\/|sa(ge|ma|mm|ms|ny|va)|sc(01|h\-|oo|p\-)|sdk\/|se(c(\-|0|1)|47|mc|nd|ri)|sgh\-|shar|sie(\-|m)|sk\-0|sl(45|id)|sm(al|ar|b3|it|t5)|so(ft|ny)|sp(01|h\-|v\-|v )|sy(01|mb)|t2(18|50)|t6(00|10|18)|ta(gt|lk)|tcl\-|tdg\-|tel(i|m)|tim\-|t\-mo|to(pl|sh)|ts(70|m\-|m3|m5)|tx\-9|up(\.b|g1|si)|utst|v400|v750|veri|vi(rg|te)|vk(40|5[0-3]|\-v)|vm40|voda|vulc|vx(52|53|60|61|70|80|81|83|85|98)|w3c(\-| )|webc|whit|wi(g |nc|nw)|wmlb|wonu|x700|yas\-|your|zeto|zte\-/i.test(a.substr(0, 4))) {
+      return true
+    }
+    return false
+  })(navigator.userAgent || navigator.vendor || window.opera)
+}
+
+function isIOS () {
+  return (/AppleWebKit/.test(navigator.userAgent) && /Mobile\/\w+/.test(navigator.userAgent)) || isIPadOS()
+}
+
+function isIPadOS () {
+  return navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1 && !window.MSStream
+}
+
+function getIOSVersion () {
+  const found = navigator.userAgent.match(/(iPhone|iPad); (CPU iPhone|CPU) OS (\d+)_(\d+)(_(\d+))?\s+/)
+  if (!found || found.length < 4) {
+    return {
+      major: 0,
+      minor: 0
+    }
+  }
+  return {
+    major: parseInt(found[3], 10),
+    minor: parseInt(found[4], 10)
+  }
 }
