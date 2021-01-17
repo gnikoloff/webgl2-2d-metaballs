@@ -15,8 +15,8 @@ void main () {
   float threshold = 0.005;
 
   outputColor = mix(
-    vec4(0.78, 0.78, 0.78, 1),
-    vec4(0, 0, 1, 1),
+    vec4(0.169,0.227,0.404, 1),
+    vec4(1.,0.608,0.443, 1),
     cutoff
   );
 
@@ -25,7 +25,7 @@ void main () {
   cutoff = step(cutoffThreshold, inputColor.a);
   outputColor = mix(
     outputColor,
-    vec4(0.94, 0.29, 0.235, 1),
+    vec4(0.91,0.282,0.333, 1),
     cutoff
   );
 }

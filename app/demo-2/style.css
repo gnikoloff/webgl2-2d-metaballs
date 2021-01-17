@@ -11,9 +11,9 @@
 body {
 	margin: 0;
 	--color-text: #fff;
-	--color-bg: #000;
-	--color-link: #aaa;
-	--color-link-hover: #fff;
+    --color-bg: #2B3A67;
+    --color-link: #767d93;
+    --color-link-hover: #fff;
 	color: var(--color-text);
 	background-color: var(--color-bg);
 	font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Helvetica, Arial, sans-serif;
