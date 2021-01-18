@@ -554,9 +554,9 @@ function makeFramebuffer () {
 }
 
 function makeTextTexture ({
-  text = CONFIG.labelText,
-  extraYPadding = 20
+  text = CONFIG.labelText.toUpperCase()
 } = {}) {
+
   const canvas = document.createElement('canvas')
   const ctx = canvas.getContext('2d')
   canvas.width = CONFIG.textQuadWidth
@@ -565,18 +565,43 @@ function makeTextTexture ({
 
   ctx.font = `${CONFIG.labelFontWeight} ${referenceFontSize}px ${CONFIG.labelFontFamily}`
   let textMetrics = ctx.measureText(text)
-  const widthDelta = CONFIG.textQuadWidth/ (textMetrics.width - textMetrics.actualBoundingBoxLeft)
+
+  const widthDelta = CONFIG.textQuadWidth / (Math.abs(textMetrics.actualBoundingBoxLeft) + Math.abs(textMetrics.actualBoundingBoxRight))
   const realFontSize = referenceFontSize * widthDelta
 
   ctx.font = `${CONFIG.labelFontWeight} ${realFontSize}px ${CONFIG.labelFontFamily}`
 
   textMetrics = ctx.measureText(text)
+  
+  const textHasJ = text.includes('J')
 
-  canvas.height = textMetrics.actualBoundingBoxAscent - textMetrics.actualBoundingBoxDescent + extraYPadding
+  let paddingYScale = 0.2
+
+  if (textHasJ) {
+    paddingYScale = 0.4
+  }
+
+  const height = (textMetrics.actualBoundingBoxAscent - textMetrics.actualBoundingBoxDescent) * (1 + paddingYScale)
+
+  canvas.height = height
 
   ctx.fillStyle = 'white'
   ctx.font = `${CONFIG.labelFontWeight} ${realFontSize}px ${CONFIG.labelFontFamily}`
-  ctx.fillText(text, 0, canvas.height - extraYPadding / 2)
+  
+  let accX = 0
+  text.split('').forEach((char, i) => {
+    let offsetY = 0
+    let paddingYScale = 0.2
+    if (char === 'J') {
+      paddingYScale = 0.4
+    } else {
+      if (textHasJ) {
+        offsetY += canvas.height * (paddingYScale / 4)
+      }
+    }
+    ctx.fillText(char, accX, canvas.height - canvas.height * (paddingYScale / 2) + offsetY)
+    accX += ctx.measureText(char).width
+  })
 
   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true)
 
