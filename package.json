@@ -20,7 +20,7 @@
     "webgl"
   ],
   "author": "Georgi Nikolov",
-  "license": "ISC",
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/gnikoloff/webgl2-2d-metaballs/issues"
   },
