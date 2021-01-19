@@ -2,7 +2,7 @@
 
 Demo for the in-depth tutorial on how to code 2D visuals using WebGL2. 
 
-![Metaballs](https://tympanus.net/codrops/wp-content/uploads/2021/01/Metaballs.jpg)
+![Metaballs](https://tympanus.net/codrops/wp-content/uploads/2021/01/Metaballs-1.jpg)
 
 [Article on Codrops](https://tympanus.net/codrops/?p=52698)
 
